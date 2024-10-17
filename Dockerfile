@@ -14,13 +14,13 @@ RUN mkdir -p /var/log/order-service && \
     chmod -R 777 /var/log/order-service  # Ensure the app can write to the log directory
 
 # Copy the project’s jar file into the container at /app
-COPY --from=build /app/target/order-service.jar utility-app.jar
+COPY --from=build /app/target/order-service.jar order-app.jar
 
 # Make port 8084 available to the world outside this container
 EXPOSE 8084
 
 # Run the jar file
-ENTRYPOINT ["java", "-jar", "utility-app.jar"]
+ENTRYPOINT ["java", "-jar", "order-app.jar"]
 
 # to build image after building jar post any changes
 # docker build -t order-service:latest .
