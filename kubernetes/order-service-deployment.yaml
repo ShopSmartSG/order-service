@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  labels:
+    app: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: simranarora264/order-service:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: LOGGING_FILE_PATH
+              value: /var/log/order-service/order-service.log
+            - name: LOGSTASH_HOST
+              value: "logstash"
+            - name: LOGSTASH_PORT
+              value: "5044"
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/order-service
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:7.14.1
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/order-service
+            - name: filebeat-config
+              mountPath: /usr/share/filebeat/filebeat.yml
+              subPath: filebeat.yml
+      volumes:
+        - name: log-volume
+          persistentVolumeClaim:
+            claimName: order-service-log-pvc
+        - name: filebeat-config
+          configMap:
+            name: filebeat-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: order-service-log-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - protocol: TCP
+      port: 8082
+      targetPort: 8082
+  type: NodePort

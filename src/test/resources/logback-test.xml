@@ -1,0 +1,32 @@
+<configuration>
+<springProperty scope="context" name="springAppName" source="central-hub"/>
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logging.file.name</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <remoteHost>logstash</remoteHost>
+        <port>5044</port>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+
+    <appender name="TEST" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>localhost:1234</destination>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+<root level="INFO">
+    <appender-ref ref="FILE"/>
+    <appender-ref ref="LOGSTASH"/>
+    <appender-ref ref="CONSOLE"/>
+</root>
+</configuration>
