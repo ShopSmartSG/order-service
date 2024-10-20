@@ -28,5 +28,20 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("Welcome to Shopsmart Order Management"));
     }
+
+
+    @Test
+    void testHomeHub() throws Exception {
+        mockMvc.perform(get("/home"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Welcome to Shopsmart Order Management Home"));
+    }
+
+    @Test
+    void testHomeHubWithEmptyPath() throws Exception {
+        mockMvc.perform(get("/home"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Welcome to Shopsmart Order Management Home"));
+    }
 }
 
