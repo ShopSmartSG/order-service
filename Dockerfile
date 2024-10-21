@@ -16,8 +16,8 @@ RUN mkdir -p /var/log/order-service && \
 # Copy the project’s jar file into the container at /app
 COPY --from=build /app/target/order-service.jar order-app.jar
 
-# Make port 8087 available to the world outside this container
-EXPOSE 8087
+# Make port 8080 available to the world outside this container
+EXPOSE 8080
 
 # Run the jar file
 ENTRYPOINT ["java", "-jar", "order-app.jar"]
