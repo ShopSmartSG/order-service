@@ -1,0 +1,68 @@
+name: Build, Test, and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}  # Ensure that the region is being set
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ECR_REPO_URI: ${{ secrets.ECR_REPO_URI }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build and run tests with JaCoCo
+        run: |
+          mvn clean test
+          mvn jacoco:report
+
+      - name: Check JaCoCo Coverage Threshold
+        run: |
+          COVERAGE=$(grep -oPm1 "(?<=<counter type=\"LINE\" missed=\")\d+" target/site/jacoco/jacoco.xml)
+          if [ "$COVERAGE" -lt "80" ]; then
+            echo "Code coverage is below 80%, build failed."
+            exit 1
+          fi
+        shell: bash
+      - name: Debug AWS Credentials
+        run: |
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}"
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          echo "ECR_REPO_URI=${{ secrets.ECR_REPO_URI }}"
+
+      - name: Log in to Amazon ECR Public
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l0d0i0v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t shopsmartsg/product-service .
+          docker tag shopsmartsg/product-service:latest ${{ secrets.ECR_REPO_URI }}:latest
+
+      - name: Push to ECR
+        run: |
+          docker push ${{ secrets.ECR_REPO_URI }}:latest
