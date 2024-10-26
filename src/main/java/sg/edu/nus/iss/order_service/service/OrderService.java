@@ -44,7 +44,7 @@ public class OrderService extends Constants {
     @Value("${"+CANCELLED_ORDERS_COLL+"}")
     private String cancelledOrderColl;
 
-    @Value("${product_service_url}")
+    @Value("${product.service.url}")
     private String productServiceUrl; //http://localhost:8080/products/ids with query param as "productIds"
 
     @Autowired
