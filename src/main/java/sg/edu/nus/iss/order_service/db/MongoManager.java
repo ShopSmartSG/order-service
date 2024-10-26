@@ -12,10 +12,12 @@ import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class MongoManager {
     private static final Logger log = LoggerFactory.getLogger(MongoManager.class);
 

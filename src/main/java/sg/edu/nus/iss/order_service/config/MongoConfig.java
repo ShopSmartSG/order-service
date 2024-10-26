@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
 import sg.edu.nus.iss.order_service.utils.Constants;
 
-@Configuration
+//@Configuration
 public class MongoConfig extends Constants {
     private static final Logger log = LoggerFactory.getLogger(MongoConfig.class);
 
@@ -52,40 +52,40 @@ public class MongoConfig extends Constants {
 //        return MongoClients.create(settings);
 //    }
 
-    @Bean
-    public MongoDatabaseFactory mongoOrderDbFactory() {
-        MongoCredential credential = MongoCredential.createCredential(
-                orderDbUsername, orderDb, orderDbPassword.toCharArray());
-
-        MongoClientSettings settings = MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(mongoSrv + "/" + orderDb))
-                .credential(credential)
-                .build();
-
-        return new SimpleMongoClientDatabaseFactory(MongoClients.create(settings), orderDb);
-    }
-
-    @Bean
-    public MongoTemplate mongoOrderDbTemplate(MongoDatabaseFactory mongoOrderDbFactory) {
-        return new MongoTemplate(mongoOrderDbFactory);
-    }
-
-    //public MongoDatabaseFactory mongoCartDbFactory(MongoClient mongoClient)
-    @Bean
-    public MongoDatabaseFactory mongoCartDbFactory() {
-        MongoCredential credential = MongoCredential.createCredential(
-                cartDbUsername, cartDb, cartDbPassword.toCharArray());
-
-        MongoClientSettings settings = MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(mongoSrv + "/" + cartDb))
-                .credential(credential)
-                .build();
-
-        return new SimpleMongoClientDatabaseFactory(MongoClients.create(settings), cartDb);
-    }
-
-    @Bean
-    public MongoTemplate mongoCartDbTemplate(MongoDatabaseFactory mongoCartDbFactory) {
-        return new MongoTemplate(mongoCartDbFactory);
-    }
+//    @Bean
+//    public MongoDatabaseFactory mongoOrderDbFactory() {
+//        MongoCredential credential = MongoCredential.createCredential(
+//                orderDbUsername, orderDb, orderDbPassword.toCharArray());
+//
+//        MongoClientSettings settings = MongoClientSettings.builder()
+//                .applyConnectionString(new ConnectionString(mongoSrv + "/" + orderDb))
+//                .credential(credential)
+//                .build();
+//
+//        return new SimpleMongoClientDatabaseFactory(MongoClients.create(settings), orderDb);
+//    }
+//
+//    @Bean
+//    public MongoTemplate mongoOrderDbTemplate(MongoDatabaseFactory mongoOrderDbFactory) {
+//        return new MongoTemplate(mongoOrderDbFactory);
+//    }
+//
+//    //public MongoDatabaseFactory mongoCartDbFactory(MongoClient mongoClient)
+//    @Bean
+//    public MongoDatabaseFactory mongoCartDbFactory() {
+//        MongoCredential credential = MongoCredential.createCredential(
+//                cartDbUsername, cartDb, cartDbPassword.toCharArray());
+//
+//        MongoClientSettings settings = MongoClientSettings.builder()
+//                .applyConnectionString(new ConnectionString(mongoSrv + "/" + cartDb))
+//                .credential(credential)
+//                .build();
+//
+//        return new SimpleMongoClientDatabaseFactory(MongoClients.create(settings), cartDb);
+//    }
+//
+//    @Bean
+//    public MongoTemplate mongoCartDbTemplate(MongoDatabaseFactory mongoCartDbFactory) {
+//        return new MongoTemplate(mongoCartDbFactory);
+//    }
 }

@@ -167,7 +167,7 @@ public class OrderController extends Constants {
         }
     }
 
-    @GetMapping("/completed/customer/{customerId}")
+    @GetMapping("/all/customer/{customerId}")
     @Operation(summary = "Retrieve completed orders for customer")
     public ResponseEntity<?> getAllOrdersByCustomerId(@PathVariable UUID customerId) {
         log.info("Retrieving all orders for customer with ID {}", customerId);
@@ -184,7 +184,7 @@ public class OrderController extends Constants {
         }
     }
 
-    @GetMapping("/completed/merchant/{merchantId}")
+    @GetMapping("/all/merchant/{merchantId}")
     @Operation(summary = "Retrieve completed orders for merchant")
     public ResponseEntity<?> getAllOrdersByMerchantId(@PathVariable UUID merchantId) {
         log.info("Retrieving all orders for merchant with ID {}", merchantId);
