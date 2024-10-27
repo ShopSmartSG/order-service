@@ -1,5 +1,6 @@
 package sg.edu.nus.iss.order_service.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -98,11 +99,11 @@ public class OrderService extends Constants {
             int errorCounts = 0;
             for(ProductUpdateReqModel reqProd : productsToBeUpdated){
                 log.info("Updating stock for productId: {}", reqProd.getProductId());
-                url = url.concat(SLASH).concat(reqProd.getMerchantId().toString()).concat(SLASH)
+                String reqUrl = url.concat(SLASH).concat(reqProd.getMerchantId().toString()).concat(SLASH)
                         .concat("products").concat(SLASH).concat(reqProd.getProductId().toString());
                 JsonNode payload = mapper.convertValue(reqProd, JsonNode.class);
                 try{
-                    Response response = wsUtils.makeWSCallObject(url, payload, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
+                    Response response = wsUtils.makeWSCallObject(reqUrl, payload, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
                     if(SUCCESS.equalsIgnoreCase(response.getStatus())){
                         log.info("Product stock updated successfully for productId: {}", reqProd.getProductId());
                     }else{
@@ -144,9 +145,10 @@ public class OrderService extends Constants {
                 return null;
             }
             ArrayNode data = (ArrayNode) response.getData();
-            List<Product> products = mapper.convertValue(data, List.class);
+//            String json = mapper.writeValueAsString(data);
+//            List<Product> products = mapper.readValue(json, new TypeReference<List<Product>>() {});
+            List<Product> products = mapper.convertValue(data, new TypeReference<List<Product>>() {});
             if(products == null || products.isEmpty()){
-                log.error("No product details found for productIds: {}", prodIds);
                 return null;
             }
             log.info("Product details found for productIds: {}", prodIds);

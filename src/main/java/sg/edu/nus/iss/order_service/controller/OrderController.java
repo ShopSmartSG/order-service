@@ -48,7 +48,7 @@ public class OrderController extends Constants {
             throw new ResourceNotFoundException("Failed to create order for customerId " + customerId);
         }else{
             log.info("Order created from cart for customer with ID {} with response {}", customerId, createResp.getData());
-            return ResponseEntity.ok(createResp.getData());
+            return ResponseEntity.ok(mapper.convertValue(createResp, JsonNode.class));
         }
     }
 
