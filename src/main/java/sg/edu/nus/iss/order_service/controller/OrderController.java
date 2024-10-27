@@ -36,7 +36,7 @@ public class OrderController extends Constants {
 
     @PutMapping("/{customerId}")
     @Operation(summary = "Create order from cart for customer")
-    public ResponseEntity<String> createOrderFromCart(@PathVariable UUID customerId) {
+    public ResponseEntity<String> createOrderFromCart(@PathVariable String customerId) {
         log.info("Creating order from cart for customer with ID {}", customerId);
         String createResp = orderService.createOrderFromCart(customerId);
         if(createResp==null){
@@ -53,7 +53,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/{orderId}")
     @Operation(summary = "Retrieve order by orderId")
-    public ResponseEntity<?> getOrderByOrderId(@PathVariable UUID orderId) {
+    public ResponseEntity<?> getOrderByOrderId(@PathVariable String orderId) {
         log.info("Retrieving order by orderId {}", orderId);
         Order order = orderService.getOrderByOrderId(orderId);
         if(order==null){
@@ -67,7 +67,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/active/customer/{customerId}")
     @Operation(summary = "Retrieve active orders for customer")
-    public ResponseEntity<?> getActiveOrdersByCustomerId(@PathVariable UUID customerId) {
+    public ResponseEntity<?> getActiveOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving active orders for customer with ID {}", customerId);
         List<Order> activeOrders = orderService.getActiveOrdersByProfileId(customerId, CUSTOMER_ID);
         if(activeOrders==null){
@@ -84,7 +84,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/active/merchant/{merchantId}")
     @Operation(summary = "Retrieve active orders for merchant")
-    public ResponseEntity<?> getActiveOrdersByMerchantId(@PathVariable UUID merchantId) {
+    public ResponseEntity<?> getActiveOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving active orders for merchant with ID {}", merchantId);
         List<Order> activeOrders = orderService.getActiveOrdersByProfileId(merchantId, MERCHANT_ID);
         if(activeOrders==null){
@@ -101,7 +101,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/cancelled/customer/{customerId}")
     @Operation(summary = "Retrieve cancelled orders for customer")
-    public ResponseEntity<?> getCancelledOrdersByCustomerId(@PathVariable UUID customerId) {
+    public ResponseEntity<?> getCancelledOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving cancelled orders for customer with ID {}", customerId);
         List<Order> cancelledOrders = orderService.getCancelledOrdersByProfileId(customerId, CUSTOMER_ID);
         if(cancelledOrders==null){
@@ -118,7 +118,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/cancelled/merchant/{merchantId}")
     @Operation(summary = "Retrieve cancelled orders for merchant")
-    public ResponseEntity<?> getCancelledOrdersByMerchantId(@PathVariable UUID merchantId) {
+    public ResponseEntity<?> getCancelledOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving cancelled orders for merchant with ID {}", merchantId);
         List<Order> cancelledOrders = orderService.getCancelledOrdersByProfileId(merchantId, MERCHANT_ID);
         if (cancelledOrders == null) {
@@ -135,7 +135,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/completed/customer/{customerId}")
     @Operation(summary = "Retrieve completed orders for customer")
-    public ResponseEntity<?> getCompletedOrdersByCustomerId(@PathVariable UUID customerId) {
+    public ResponseEntity<?> getCompletedOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving completed orders for customer with ID {}", customerId);
         List<Order> completedOrders = orderService.getCompletedOrdersByProfileId(customerId, CUSTOMER_ID);
         if(completedOrders==null){
@@ -152,7 +152,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/completed/merchant/{merchantId}")
     @Operation(summary = "Retrieve completed orders for merchant")
-    public ResponseEntity<?> getCompletedOrdersByMerchantId(@PathVariable UUID merchantId) {
+    public ResponseEntity<?> getCompletedOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving completed orders for merchant with ID {}", merchantId);
         List<Order> completedOrders = orderService.getCompletedOrdersByProfileId(merchantId, MERCHANT_ID);
         if (completedOrders == null) {
@@ -169,7 +169,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/all/customer/{customerId}")
     @Operation(summary = "Retrieve completed orders for customer")
-    public ResponseEntity<?> getAllOrdersByCustomerId(@PathVariable UUID customerId) {
+    public ResponseEntity<?> getAllOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving all orders for customer with ID {}", customerId);
         List<Order> allOrders = orderService.getAllOrdersByProfileId(customerId, CUSTOMER_ID);
         if(allOrders==null){
@@ -186,7 +186,7 @@ public class OrderController extends Constants {
 
     @GetMapping("/all/merchant/{merchantId}")
     @Operation(summary = "Retrieve completed orders for merchant")
-    public ResponseEntity<?> getAllOrdersByMerchantId(@PathVariable UUID merchantId) {
+    public ResponseEntity<?> getAllOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving all orders for merchant with ID {}", merchantId);
         List<Order> completedOrders = orderService.getAllOrdersByProfileId(merchantId, MERCHANT_ID);
         if (completedOrders == null) {
@@ -203,7 +203,7 @@ public class OrderController extends Constants {
 
     @PutMapping("/{orderId}/{status}")
     @Operation(summary = "Update order status by orderId")
-    public ResponseEntity<?> updateOrderStatus(@PathVariable UUID orderId, @PathVariable OrderStatus status) {
+    public ResponseEntity<?> updateOrderStatus(@PathVariable String orderId, @PathVariable OrderStatus status) {
         log.info("Updating order status by orderId {}", orderId);
         boolean updateResp = orderService.updateOrderStatus(orderId, status);
         if(!updateResp){

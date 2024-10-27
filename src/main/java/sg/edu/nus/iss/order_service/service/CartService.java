@@ -19,6 +19,7 @@ import sg.edu.nus.iss.order_service.utils.Constants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class CartService extends Constants {
@@ -39,7 +40,7 @@ public class CartService extends Constants {
     }
 
     //right now assumption is that always matching merchant id will be provided.
-    public Response addItemToCart(UUID customerId, Item item, UUID merchantId) {
+    public Response addItemToCart(String customerId, Item item, String merchantId) {
         log.info("Adding item {} to cart for customer with ID {}", item, customerId);
         Cart cart = getCartByCustomerId(customerId);
         if(cart==null){
@@ -74,7 +75,12 @@ public class CartService extends Constants {
                 cart.setCartItems(currentItems);
             }
             Document query = new Document(CUSTOMER_ID, customerId);
-            Document updateDoc = new Document(CART_ITEMS, cart.getCartItems());
+
+            List<Document> itemDocuments = cart.getCartItems().stream()
+                    .map(itemEle -> mapper.convertValue(itemEle, Document.class))
+                    .collect(Collectors.toList());
+
+            Document updateDoc = new Document(CART_ITEMS, itemDocuments);
             updateDoc.put(UPDATED_AT, System.currentTimeMillis());
             Document update = new Document("$set", updateDoc);
             log.info("Updating cart for customer with ID {}, with update document : {}", customerId, mapper.convertValue(update, JsonNode.class));
@@ -90,7 +96,7 @@ public class CartService extends Constants {
     }
 
     //have a similar method to remove same product from all carts of a particular merchant
-    public Response removeItemFromCart(UUID customerId, Item item) {
+    public Response removeItemFromCart(String customerId, Item item) {
         log.info("Removing item {} to cart for customer with ID {}", item, customerId);
         Cart cart = getCartByCustomerId(customerId);
         if(cart==null){
@@ -101,7 +107,7 @@ public class CartService extends Constants {
             boolean updated = false;
             List<Item> updatedCart = new ArrayList<>();
             for(Item curr : cart.getCartItems()){
-                if(curr.getProductId() == item.getProductId()){
+                if(curr.getProductId().equalsIgnoreCase(item.getProductId())){
                     int newQuantity = curr.getQuantity() - item.getQuantity();
                     if(newQuantity>0){
                         curr.setQuantity(newQuantity);
@@ -121,7 +127,12 @@ public class CartService extends Constants {
                 return deleteCartByCustomerId(customerId);
             }
             Document query = new Document(CUSTOMER_ID, customerId);
-            Document updateDoc = new Document(CART_ITEMS, updatedCart);
+
+            List<Document> itemDocuments = updatedCart.stream()
+                    .map(itemEle -> mapper.convertValue(itemEle, Document.class))
+                    .collect(Collectors.toList());
+
+            Document updateDoc = new Document(CART_ITEMS, itemDocuments);
             updateDoc.put(UPDATED_AT, System.currentTimeMillis());
             Document update = new Document("$set", updateDoc);
             log.info("Updating cart for customer with ID {}, with update document : {} to remove it", customerId,
@@ -137,7 +148,7 @@ public class CartService extends Constants {
         }
     }
 
-    public Cart getCartByCustomerId(UUID customerId) {
+    public Cart getCartByCustomerId(String customerId) {
         log.info("Finding cart for customer with ID {}", customerId);
         Document query = new Document(CUSTOMER_ID, customerId);
         Document cartDoc = mongoManager.findDocument(query, cartDb, cartColl);
@@ -152,7 +163,7 @@ public class CartService extends Constants {
         }
     }
 
-    public Response findCartByCustomerId(UUID customerId) {
+    public Response findCartByCustomerId(String customerId) {
         log.info("Finding cart for customer with ID {}", customerId);
         Document query = new Document(CUSTOMER_ID, customerId);
         Document cartDoc = mongoManager.findDocument(query, cartDb, cartColl);
@@ -181,7 +192,7 @@ public class CartService extends Constants {
 
 
     //basically works the same as empty cart out in one go
-    public Response deleteCartByCustomerId(UUID customerId) {
+    public Response deleteCartByCustomerId(String customerId) {
         log.info("Deleting/Emptying cart for customer with ID {}", customerId);
         Document query = new Document(CUSTOMER_ID, customerId);
         log.info("Deleting/Emptying cart for customer with ID {} with query : {}", customerId, query);

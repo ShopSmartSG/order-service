@@ -54,7 +54,7 @@ public class OrderService extends Constants {
         this.wsUtils = wsUtils;
     }
 
-    public String createOrderFromCart(UUID customerId){
+    public String createOrderFromCart(String customerId){
         log.info("Creating order for customer: {}", customerId);
         Cart cart = cartService.getCartByCustomerId(customerId);
         if(cart == null || cart.getCartItems().isEmpty()){
@@ -62,7 +62,7 @@ public class OrderService extends Constants {
             return null;
         }
         Order order = new Order();
-        order.setOrderId(UUID.randomUUID());
+        order.setOrderId(UUID.randomUUID().toString());
         order.setCustomerId(customerId);
         order.setMerchantId(cart.getMerchantId());
         order.setStatus(OrderStatus.CREATED);
@@ -132,7 +132,7 @@ public class OrderService extends Constants {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public List<Order> getCompletedOrdersByProfileId(UUID profileId, String profileIdKey){
+    public List<Order> getCompletedOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching completed orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, completedOrderColl);
@@ -145,7 +145,7 @@ public class OrderService extends Constants {
         }
     }
 
-    public List<Order> getCancelledOrdersByProfileId(UUID profileId, String profileIdKey){
+    public List<Order> getCancelledOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching cancelled orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, cancelledOrderColl);
@@ -158,7 +158,7 @@ public class OrderService extends Constants {
         }
     }
 
-    public List<Order> getActiveOrdersByProfileId(UUID profileId, String profileIdKey){
+    public List<Order> getActiveOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching active orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
@@ -171,7 +171,7 @@ public class OrderService extends Constants {
         }
     }
 
-    public List<Order> getAllOrdersByProfileId(UUID profileId, String profileIdKey){
+    public List<Order> getAllOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
         List<Document> totalOrders = new ArrayList<>();
@@ -193,7 +193,7 @@ public class OrderService extends Constants {
         return mapper.convertValue(totalOrders, List.class);
     }
 
-    public Order getOrderByOrderId(UUID orderId){
+    public Order getOrderByOrderId(String orderId){
         log.info("Fetching order by orderId: {}", orderId);
         Document query = new Document(ORDER_ID, orderId);
         Document resDoc = mongoManager.findDocument(query, orderDb, orderColl);
@@ -207,7 +207,7 @@ public class OrderService extends Constants {
     }
 
     //later on we need to implement Chain of Responsibility pattern to handle this.
-    public boolean updateOrderStatus(UUID orderId, OrderStatus status){
+    public boolean updateOrderStatus(String orderId, OrderStatus status){
         log.info("Updating order status for orderId: {} to status : {}", orderId, status);
         Document query = new Document(ORDER_ID, orderId);
         Document orderDoc = mongoManager.findDocument(query, orderDb, orderColl);

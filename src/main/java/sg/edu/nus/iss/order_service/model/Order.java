@@ -17,11 +17,11 @@ import java.util.UUID;
 @Data
 //@Document(collection = "#{@orderCollectionResolver.resolve(#root)}")
 public class Order {
-    @Id
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private UUID orderId;
-    private UUID customerId;
-    private UUID merchantId;
+//    @Id
+//    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String orderId;
+    private String customerId;
+    private String merchantId;
     private List<Item> orderItems;
     private BigDecimal totalPrice;
     private OrderStatus status;

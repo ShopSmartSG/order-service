@@ -37,7 +37,7 @@ public class CartController extends Constants {
 
     @GetMapping("/{customerId}")
     @Operation(summary = "Retrieve cart for customer")
-    public ResponseEntity<JsonNode> getCartByCustomerId(@PathVariable UUID customerId) {
+    public ResponseEntity<JsonNode> getCartByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving cart for customer with ID {}", customerId);
         Response response = cartService.findCartByCustomerId(customerId);
         if(response==null){
@@ -54,7 +54,7 @@ public class CartController extends Constants {
 
     @PutMapping("/add/{customerId}/merchant/{merchantId}")
     @Operation(summary = "Add item to cart")
-    public ResponseEntity<JsonNode> addItemToCart(@PathVariable UUID customerId, @RequestBody Item item, @PathVariable UUID merchantId) {
+    public ResponseEntity<JsonNode> addItemToCart(@PathVariable String customerId, @RequestBody Item item, @PathVariable String merchantId) {
         log.info("Adding item {} to cart for customer with ID {}", item, customerId);
         ObjectNode response = mapper.createObjectNode();
         Response result = cartService.addItemToCart(customerId, item, merchantId);
@@ -75,7 +75,7 @@ public class CartController extends Constants {
 
     @PutMapping("/remove/{customerId}")
     @Operation(summary = "Remove item from cart")
-    public ResponseEntity<JsonNode> removeItemFromCart(@PathVariable UUID customerId, @RequestBody Item item) {
+    public ResponseEntity<JsonNode> removeItemFromCart(@PathVariable String customerId, @RequestBody Item item) {
         log.info("Removing item {} from cart for customer with ID {}", item, customerId);
         ObjectNode response = mapper.createObjectNode();
         Response result = cartService.removeItemFromCart(customerId, item);
@@ -96,7 +96,7 @@ public class CartController extends Constants {
 
     @DeleteMapping("/{customerId}")
     @Operation(summary = "Delete or empty cart for customer")
-    public ResponseEntity<JsonNode> deleteCart(@PathVariable UUID customerId) {
+    public ResponseEntity<JsonNode> deleteCart(@PathVariable String customerId) {
         log.info("Deleting or emptying cart for customer with ID {}", customerId);
         ObjectNode response = mapper.createObjectNode();
         Response result = cartService.deleteCartByCustomerId(customerId);

@@ -11,11 +11,11 @@ import java.util.UUID;
 @Data
 //@Document(collection = "cart")
 public class Cart {
-    @Id
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private UUID customerId;
+//    @Id
+//    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String customerId;
     private List<Item> cartItems;
-    private UUID merchantId;
+    private String merchantId;
     private long createdAt;
     private long updatedAt;
 }

@@ -9,11 +9,14 @@ import java.util.UUID;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Item {
-    private UUID productId;
+    private String productId;
     private int quantity;
     private BigDecimal price;
 
-    public Item(UUID productId, int quantity) {
+    public Item() {
+    }
+
+    public Item(String productId, int quantity) {
         this.productId = productId;
         this.quantity = quantity;
     }

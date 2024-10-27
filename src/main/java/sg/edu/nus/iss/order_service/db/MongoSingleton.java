@@ -5,7 +5,9 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import org.bson.UuidRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,31 +25,51 @@ public class MongoSingleton extends Constants {
     private static final Map<String, MongoClient> mongoClients = new HashMap<>();
 
     @Value("${"+MONGO_SRV+"}")
-    private static String mongoSrv;
+    private String mongoSrvVal;
 
     @Value("${"+ORDER_DB+"}")
-    private static String orderDb;
+    private String orderDbVal;
 
     @Value("${"+ORDER_DB_USERNAME+"}")
-    private static String orderDbUsername;
+    private String orderDbUsernameVal;
 
     @Value("${"+ORDER_DB_PASSWORD+"}")
-    private static String orderDbPassword;
+    private String orderDbPasswordVal;
 
     @Value("${"+CART_DB+"}")
-    private static String cartDb;
+    private String cartDbVal;
 
     @Value("${"+CART_DB_USERNAME+"}")
-    private static String cartDbUsername;
+    private String cartDbUsernameVal;
 
     @Value("${"+CART_DB_PASSWORD+"}")
+    private String cartDbPasswordVal;
+
+    private static String mongoSrv;
+    private static String orderDb;
+    private static String orderDbUsername;
+    private static String orderDbPassword;
+    private static String cartDb;
+    private static String cartDbUsername;
     private static String cartDbPassword;
+
+    @PostConstruct
+    private void init() {
+        mongoSrv = this.mongoSrvVal;
+        orderDb = this.orderDbVal;
+        orderDbUsername = this.orderDbUsernameVal;
+        orderDbPassword = this.orderDbPasswordVal;
+        cartDb = this.cartDbVal;
+        cartDbUsername = this.cartDbUsernameVal;
+        cartDbPassword = this.cartDbPasswordVal;
+    }
 
     private MongoSingleton() {
         // private constructor to prevent instantiation
     }
 
     public static MongoClient getMongoClient(String dbName) {
+        log.debug("Entering getMongoClient method.");
         // First check (outside synchronized block) to avoid unnecessary locking
         if (!mongoClients.containsKey(dbName)) {
             synchronized (MongoSingleton.class) {
@@ -65,28 +87,31 @@ public class MongoSingleton extends Constants {
     * Uses Builder Design Pattern
     */
     private static MongoClient createMongoClient(String dbName) {
+        log.debug("Entering createMongoClient method.");
         ConnectionString connectionString = new ConnectionString(mongoSrv);
         if (orderDb.equals(dbName)) {
             log.info("Setting mongo client for Order DB.");
             // Connection for order DB
-            MongoCredential credential = MongoCredential.createCredential(
-                    orderDbUsername, orderDb, orderDbPassword.toCharArray());
+//            MongoCredential credential = MongoCredential.createCredential(
+//                    orderDbUsername, orderDb, orderDbPassword.toCharArray());
 
             MongoClientSettings settings = MongoClientSettings.builder()
                     .applyConnectionString(connectionString)
-                    .credential(credential)
+                    .uuidRepresentation(UuidRepresentation.STANDARD)
+//                    .credential(credential)
                     .build();
 
             return MongoClients.create(settings);
         } else if (cartDb.equals(dbName)) {
             log.info("Setting mongo client for Cart DB.");
             // Connection for cart DB
-            MongoCredential credential = MongoCredential.createCredential(
-                    cartDbUsername, cartDb, cartDbPassword.toCharArray());
+//            MongoCredential credential = MongoCredential.createCredential(
+//                    cartDbUsername, cartDb, cartDbPassword.toCharArray());
 
             MongoClientSettings settings = MongoClientSettings.builder()
                     .applyConnectionString(connectionString)
-                    .credential(credential)
+                    .uuidRepresentation(UuidRepresentation.STANDARD)
+//                    .credential(credential)
                     .build();
 
             return MongoClients.create(settings);
