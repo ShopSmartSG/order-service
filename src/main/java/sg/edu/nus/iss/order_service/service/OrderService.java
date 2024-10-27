@@ -263,7 +263,7 @@ public class OrderService extends Constants {
             log.info("Found cancelled orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, cancelledOrders.size());
             totalOrders.addAll(cancelledOrders);
         }
-        if(orders!=null && !orders.isEmpty()){
+        if(totalOrders!=null && !totalOrders.isEmpty()){
             log.info("Found total orders for profileKey {}, profileId: {}, as count {}", profileIdKey, profileId, totalOrders.size());
             List<Order> orderList = mapper.convertValue(totalOrders, List.class);
             return utils.getSuccessResponse("Total orders found for ".concat(profileIdKey)
