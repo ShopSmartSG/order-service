@@ -330,7 +330,7 @@ public class OrderService extends Constants {
                 orderDoc.put(STATUS, OrderStatus.CANCELLED);
                 orderDoc.put(UPDATED_AT, System.currentTimeMillis());
                 orderDoc.put(UPDATED_BY, MERCHANT);
-                mongoManager.insertDocument(orderDoc, orderDb, completedOrderColl);
+                mongoManager.insertDocument(orderDoc, orderDb, cancelledOrderColl);
                 mongoManager.deleteDocument(query, orderDb, orderColl);
                 log.info("Order has been cancelled successfully for orderId: {} and kept in cancelled coll", orderId);
                 return utils.getFailedResponse("Order has been cancelled successfully for orderId: ".concat(orderId).concat(" and kept in cancelled coll"));
