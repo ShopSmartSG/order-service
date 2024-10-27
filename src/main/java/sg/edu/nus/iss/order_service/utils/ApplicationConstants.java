@@ -6,11 +6,13 @@ public interface ApplicationConstants {
     String CREATED = "CREATED";
     String READY = "READY";
     String DOT = ".";
+    String SLASH = "/";
     String CUSTOMER_ID = "customerId";
     String CUSTOMER = "customer";
     String MERCHANT = "merchant";
     String MERCHANT_ID = "merchantId";
     String ORDER_ID = "orderId";
+    String PRODUCT_ID = "productId";
     String ORDER_ITEMS = "orderItems";
     String TOTAL_PRICE = "totalPrice";
     String STATUS = "status";

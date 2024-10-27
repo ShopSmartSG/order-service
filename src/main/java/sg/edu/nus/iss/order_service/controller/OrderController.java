@@ -2,6 +2,7 @@ package sg.edu.nus.iss.order_service.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.v3.core.util.Json;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,182 +37,192 @@ public class OrderController extends Constants {
 
     @PutMapping("/{customerId}")
     @Operation(summary = "Create order from cart for customer")
-    public ResponseEntity<String> createOrderFromCart(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> createOrderFromCart(@PathVariable String customerId) {
         log.info("Creating order from cart for customer with ID {}", customerId);
-        String createResp = orderService.createOrderFromCart(customerId);
+        Response createResp = orderService.createOrderFromCart(customerId);
         if(createResp==null){
             log.error("Some exception happened trying to create order from cart for customer with ID {}", customerId);
             throw new ResourceNotFoundException("Some exception happened trying to create order from cart for customer with ID " + customerId);
-        } else if(createResp.isEmpty()){
+        } else if(FAILURE.equalsIgnoreCase(createResp.getStatus())){
             log.error("Failed to create order for customerId {}", customerId);
             throw new ResourceNotFoundException("Failed to create order for customerId " + customerId);
         }else{
-            log.info("Order created from cart for customer with ID {} with response {}", customerId, createResp);
-            return ResponseEntity.ok(createResp);
+            log.info("Order created from cart for customer with ID {} with response {}", customerId, createResp.getData());
+            return ResponseEntity.ok(createResp.getData());
         }
     }
 
     @GetMapping("/{orderId}")
     @Operation(summary = "Retrieve order by orderId")
-    public ResponseEntity<?> getOrderByOrderId(@PathVariable String orderId) {
+    public ResponseEntity<JsonNode> getOrderByOrderId(@PathVariable String orderId) {
         log.info("Retrieving order by orderId {}", orderId);
-        Order order = orderService.getOrderByOrderId(orderId);
-        if(order==null){
-            log.error("Unable to find order with orderId {}", orderId);
+        Response orderResp = orderService.getOrderByOrderId(orderId);
+        if(orderResp==null){
+            log.error("Some exception happened trying to find order with orderId {}", orderId);
             throw new ResourceNotFoundException("Some error occurred while fetching order by orderId " + orderId);
-        }else{
-            log.info("Order with ID {} found. Order: {}", orderId, order);
-            return ResponseEntity.ok(order);
+        }else if (FAILURE.equalsIgnoreCase(orderResp.getStatus())){
+            log.error("Order with ID {} not found", orderId);
+            throw new ResourceNotFoundException("Order with ID " + orderId + " not found");
+        } else{
+            log.info("Order with ID {} found. Order: {}", orderId, orderResp.getData());
+            return ResponseEntity.ok(orderResp.getData());
         }
     }
 
     @GetMapping("/active/customer/{customerId}")
     @Operation(summary = "Retrieve active orders for customer")
-    public ResponseEntity<?> getActiveOrdersByCustomerId(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> getActiveOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving active orders for customer with ID {}", customerId);
-        List<Order> activeOrders = orderService.getActiveOrdersByProfileId(customerId, CUSTOMER_ID);
+        Response activeOrders = orderService.getActiveOrdersByProfileId(customerId, CUSTOMER_ID);
         if(activeOrders==null){
             log.error("Some exception happened trying to get active orders for customer with ID {}", customerId);
             throw new ResourceNotFoundException("Some exception happened trying to get active orders for customer with ID " + customerId);
-        } else if (activeOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(activeOrders.getStatus())) {
             log.error("No active orders found with customer ID {}", customerId);
             throw new ResourceNotFoundException("No active orders found with customer ID " + customerId);
         }else{
-            log.info("Active orders for customer with ID {} found. Order size: {}", customerId, activeOrders.size());
-            return ResponseEntity.ok(activeOrders);
+            log.info("Active orders for customer with ID {} found. Orders count: {}", customerId, activeOrders.getData().size());
+            return ResponseEntity.ok(activeOrders.getData());
         }
     }
 
     @GetMapping("/active/merchant/{merchantId}")
     @Operation(summary = "Retrieve active orders for merchant")
-    public ResponseEntity<?> getActiveOrdersByMerchantId(@PathVariable String merchantId) {
+    public ResponseEntity<JsonNode> getActiveOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving active orders for merchant with ID {}", merchantId);
-        List<Order> activeOrders = orderService.getActiveOrdersByProfileId(merchantId, MERCHANT_ID);
+        Response activeOrders = orderService.getActiveOrdersByProfileId(merchantId, MERCHANT_ID);
         if(activeOrders==null){
             log.error("Some exception happened trying to get active orders for merchant with ID {}", merchantId);
             throw new ResourceNotFoundException("Some exception happened trying to get active orders for merchant with ID " + merchantId);
-        } else if (activeOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(activeOrders.getStatus())) {
             log.error("No active orders found with merchant ID {}", merchantId);
             throw new ResourceNotFoundException("No active orders found with merchant ID " + merchantId);
         }else{
-            log.info("Active orders for merchant with ID {} found. Order size: {}", merchantId, activeOrders.size());
-            return ResponseEntity.ok(activeOrders);
+            log.info("Active orders for merchant with ID {} found. Orders count: {}", merchantId, activeOrders.getData().size());
+            return ResponseEntity.ok(activeOrders.getData());
         }
     }
 
     @GetMapping("/cancelled/customer/{customerId}")
     @Operation(summary = "Retrieve cancelled orders for customer")
-    public ResponseEntity<?> getCancelledOrdersByCustomerId(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> getCancelledOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving cancelled orders for customer with ID {}", customerId);
-        List<Order> cancelledOrders = orderService.getCancelledOrdersByProfileId(customerId, CUSTOMER_ID);
+        Response cancelledOrders = orderService.getCancelledOrdersByProfileId(customerId, CUSTOMER_ID);
         if(cancelledOrders==null){
             log.error("Some exception happened trying to get cancelled orders for customer with ID {}", customerId);
             throw new ResourceNotFoundException("Some exception happened trying to get cancelled orders for customer with ID " + customerId);
-        } else if (cancelledOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(cancelledOrders.getStatus())) {
             log.error("No cancelled orders found with customer ID {}", customerId);
             throw new ResourceNotFoundException("No cancelled orders found with customer ID " + customerId);
         }else{
-            log.info("cancelled orders for customer with ID {} found. Order size: {}", customerId, cancelledOrders.size());
-            return ResponseEntity.ok(cancelledOrders);
+            log.info("cancelled orders for customer with ID {} found. Orders count: {}", customerId, cancelledOrders.getData().size());
+            return ResponseEntity.ok(cancelledOrders.getData());
         }
     }
 
     @GetMapping("/cancelled/merchant/{merchantId}")
     @Operation(summary = "Retrieve cancelled orders for merchant")
-    public ResponseEntity<?> getCancelledOrdersByMerchantId(@PathVariable String merchantId) {
+    public ResponseEntity<JsonNode> getCancelledOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving cancelled orders for merchant with ID {}", merchantId);
-        List<Order> cancelledOrders = orderService.getCancelledOrdersByProfileId(merchantId, MERCHANT_ID);
+        Response cancelledOrders = orderService.getCancelledOrdersByProfileId(merchantId, MERCHANT_ID);
         if (cancelledOrders == null) {
             log.error("Some exception happened trying to get cancelled orders for merchant with ID {}", merchantId);
             throw new ResourceNotFoundException("Some exception happened trying to get cancelled orders for merchant with ID " + merchantId);
-        } else if (cancelledOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(cancelledOrders.getStatus())) {
             log.error("No cancelled orders found with merchant ID {}", merchantId);
             throw new ResourceNotFoundException("No cancelled orders found with merchant ID " + merchantId);
         } else {
-            log.info("cancelled orders for merchant with ID {} found. Order size: {}", merchantId, cancelledOrders.size());
-            return ResponseEntity.ok(cancelledOrders);
+            log.info("cancelled orders for merchant with ID {} found. Orders count: {}", merchantId, cancelledOrders.getData().size());
+            return ResponseEntity.ok(cancelledOrders.getData());
         }
     }
 
     @GetMapping("/completed/customer/{customerId}")
     @Operation(summary = "Retrieve completed orders for customer")
-    public ResponseEntity<?> getCompletedOrdersByCustomerId(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> getCompletedOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving completed orders for customer with ID {}", customerId);
-        List<Order> completedOrders = orderService.getCompletedOrdersByProfileId(customerId, CUSTOMER_ID);
+        Response completedOrders = orderService.getCompletedOrdersByProfileId(customerId, CUSTOMER_ID);
         if(completedOrders==null){
             log.error("Some exception happened trying to get completed orders for customer with ID {}", customerId);
             throw new ResourceNotFoundException("Some exception happened trying to get completed orders for customer with ID " + customerId);
-        } else if (completedOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(completedOrders.getStatus())) {
             log.error("No completed orders found with customer ID {}", customerId);
             throw new ResourceNotFoundException("No completed orders found with customer ID " + customerId);
         }else{
-            log.info("completed orders for customer with ID {} found. Order size: {}", customerId, completedOrders.size());
-            return ResponseEntity.ok(completedOrders);
+            log.info("completed orders for customer with ID {} found. Orders count: {}", customerId, completedOrders.getData().size());
+            return ResponseEntity.ok(completedOrders.getData());
         }
     }
 
     @GetMapping("/completed/merchant/{merchantId}")
     @Operation(summary = "Retrieve completed orders for merchant")
-    public ResponseEntity<?> getCompletedOrdersByMerchantId(@PathVariable String merchantId) {
+    public ResponseEntity<JsonNode> getCompletedOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving completed orders for merchant with ID {}", merchantId);
-        List<Order> completedOrders = orderService.getCompletedOrdersByProfileId(merchantId, MERCHANT_ID);
+        Response completedOrders = orderService.getCompletedOrdersByProfileId(merchantId, MERCHANT_ID);
         if (completedOrders == null) {
             log.error("Some exception happened trying to get completed orders for merchant with ID {}", merchantId);
             throw new ResourceNotFoundException("Some exception happened trying to get completed orders for merchant with ID " + merchantId);
-        } else if (completedOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(completedOrders.getStatus())) {
             log.error("No completed orders found with merchant ID {}", merchantId);
             throw new ResourceNotFoundException("No completed orders found with merchant ID " + merchantId);
         } else {
-            log.info("completed orders for merchant with ID {} found. Order size: {}", merchantId, completedOrders.size());
-            return ResponseEntity.ok(completedOrders);
+            log.info("completed orders for merchant with ID {} found. Orders count: {}", merchantId, completedOrders.getData().size());
+            return ResponseEntity.ok(completedOrders.getData());
         }
     }
 
     @GetMapping("/all/customer/{customerId}")
     @Operation(summary = "Retrieve completed orders for customer")
-    public ResponseEntity<?> getAllOrdersByCustomerId(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> getAllOrdersByCustomerId(@PathVariable String customerId) {
         log.info("Retrieving all orders for customer with ID {}", customerId);
-        List<Order> allOrders = orderService.getAllOrdersByProfileId(customerId, CUSTOMER_ID);
+        Response allOrders = orderService.getAllOrdersByProfileId(customerId, CUSTOMER_ID);
         if(allOrders==null){
             log.error("Some exception happened trying to get all orders for customer with ID {}", customerId);
             throw new ResourceNotFoundException("Some exception happened trying to get all orders for customer with ID " + customerId);
-        } else if (allOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(allOrders.getStatus())) {
             log.error("No orders found with customer ID {}", customerId);
             throw new ResourceNotFoundException("No orders found with customer ID " + customerId);
         }else{
-            log.info("All orders for customer with ID {} found. Order size: {}", customerId, allOrders.size());
-            return ResponseEntity.ok(allOrders);
+            log.info("All orders for customer with ID {} found. Order count: {}", customerId, allOrders.getData().size());
+            return ResponseEntity.ok(allOrders.getData());
         }
     }
 
     @GetMapping("/all/merchant/{merchantId}")
     @Operation(summary = "Retrieve completed orders for merchant")
-    public ResponseEntity<?> getAllOrdersByMerchantId(@PathVariable String merchantId) {
+    public ResponseEntity<JsonNode> getAllOrdersByMerchantId(@PathVariable String merchantId) {
         log.info("Retrieving all orders for merchant with ID {}", merchantId);
-        List<Order> completedOrders = orderService.getAllOrdersByProfileId(merchantId, MERCHANT_ID);
+        Response completedOrders = orderService.getAllOrdersByProfileId(merchantId, MERCHANT_ID);
         if (completedOrders == null) {
             log.error("Some exception happened trying to get all orders for merchant with ID {}", merchantId);
             throw new ResourceNotFoundException("Some exception happened trying to get all orders for merchant with ID " + merchantId);
-        } else if (completedOrders.isEmpty()) {
+        } else if (FAILURE.equalsIgnoreCase(completedOrders.getStatus())) {
             log.error("No orders found with merchant ID {}", merchantId);
             throw new ResourceNotFoundException("No orders found with merchant ID " + merchantId);
         } else {
-            log.info("All orders for merchant with ID {} found. Order size: {}", merchantId, completedOrders.size());
-            return ResponseEntity.ok(completedOrders);
+            log.info("All orders for merchant with ID {} found. Orders count : {}", merchantId, completedOrders.getData().size());
+            return ResponseEntity.ok(completedOrders.getData());
         }
     }
 
     @PutMapping("/{orderId}/{status}")
     @Operation(summary = "Update order status by orderId")
-    public ResponseEntity<?> updateOrderStatus(@PathVariable String orderId, @PathVariable OrderStatus status) {
+    public ResponseEntity<JsonNode> updateOrderStatus(@PathVariable String orderId, @PathVariable OrderStatus status) {
         log.info("Updating order status by orderId {}", orderId);
-        boolean updateResp = orderService.updateOrderStatus(orderId, status);
-        if(!updateResp){
+        ObjectNode response = mapper.createObjectNode();
+        Response updateResp = orderService.updateOrderStatus(orderId, status);
+        if(updateResp==null){
+            log.error("Some exception happened trying to update order status {} for orderId {}", status, orderId);
+            response.put(MESSAGE, "Some exception happened trying to update order status " + status + " for orderId " + orderId);
+            return ResponseEntity.internalServerError().body(response);
+        }else if(FAILURE.equalsIgnoreCase(updateResp.getStatus())){
             log.error("Failed to update order status {} for orderId {}", status, orderId);
-            return ResponseEntity.badRequest().body("Failed to update order status " + status + " for orderId " + orderId);
+            response.put(MESSAGE, "Failed to update order status " + status + " for orderId " + orderId);
+            return ResponseEntity.badRequest().body(response);
         }else{
             log.info("Order status updated for orderId {} for status {}", orderId, status);
-            return ResponseEntity.ok("Order status updated for orderId " + orderId);
+            response.put(MESSAGE, "Order status updated for orderId " + orderId);
+            return ResponseEntity.ok(response);
         }
     }
 

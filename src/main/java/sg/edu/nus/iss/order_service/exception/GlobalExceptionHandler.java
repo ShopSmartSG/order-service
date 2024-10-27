@@ -10,18 +10,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import sg.edu.nus.iss.order_service.utils.Constants;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @ControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends Constants {
     private final ObjectMapper mapper = Json.mapper();
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<JsonNode> handleResourceNotFoundException(ResourceNotFoundException ex) {
         ObjectNode errResp = mapper.createObjectNode();
-        errResp.put("message", ex.getMessage());
+        errResp.put(MESSAGE, ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errResp);
     }
 
@@ -37,14 +38,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<JsonNode> handleIllegalArgumentException(IllegalArgumentException ex) {
         ObjectNode errResp = mapper.createObjectNode();
-        errResp.put("message", ex.getMessage());
+        errResp.put(MESSAGE, ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errResp);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGlobalException(Exception ex) {
         ObjectNode errResp = mapper.createObjectNode();
-        errResp.put("message","Internal Server Error");
+        errResp.put(MESSAGE,"Internal Server Error");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errResp);
     }
 }

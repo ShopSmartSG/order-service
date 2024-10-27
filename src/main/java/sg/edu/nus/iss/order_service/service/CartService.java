@@ -10,15 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import sg.edu.nus.iss.order_service.db.MongoManager;
-import sg.edu.nus.iss.order_service.exception.ResourceNotFoundException;
 import sg.edu.nus.iss.order_service.model.Cart;
 import sg.edu.nus.iss.order_service.model.Item;
 import sg.edu.nus.iss.order_service.model.Response;
 import sg.edu.nus.iss.order_service.utils.Constants;
+import sg.edu.nus.iss.order_service.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +26,7 @@ public class CartService extends Constants {
     private final ObjectMapper mapper = Json.mapper();
 
     private final MongoManager mongoManager;
+    private final Utils utils;
 
     @Value("${"+CART_DB+"}")
     private String cartDb;
@@ -35,8 +35,9 @@ public class CartService extends Constants {
     private String cartColl;
 
     @Autowired
-    public CartService(MongoManager mongoManager){
+    public CartService(MongoManager mongoManager, Utils utils){
         this.mongoManager = mongoManager;
+        this.utils = utils;
     }
 
     //right now assumption is that always matching merchant id will be provided.
@@ -55,10 +56,10 @@ public class CartService extends Constants {
             boolean result = createCart(cart);
             if(result){
                 log.info("Cart created successfully for customer with ID {} for add item", customerId);
-                return getSuccessResponse("Cart created successfully to add new item", null);
+                return utils.getSuccessResponse("Cart created successfully to add new item", null);
             }else{
                 log.error("Failed to create cart for customer with ID {} for add item", customerId);
-                return getFailedResponse("Failed to create new cart to add item");
+                return utils.getFailedResponse("Failed to create new cart to add item");
             }
         } else {
             log.info("Cart for customer with ID {} found. Adding item {} to cart.", customerId, item);
@@ -87,10 +88,10 @@ public class CartService extends Constants {
             Document result = mongoManager.findOneAndUpdate(query, update, cartDb, cartColl, true, false);
             if(result!=null){
                 log.info("Cart updated successfully for customer with ID {}", customerId);
-                return getSuccessResponse("Item added successfully in cart", null);
+                return utils.getSuccessResponse("Item added successfully in cart", null);
             }else{
                 log.error("Failed to update cart for customer with ID {}", customerId);
-                return getFailedResponse("Failed to add item in cart");
+                return utils.getFailedResponse("Failed to add item in cart");
             }
         }
     }
@@ -101,7 +102,7 @@ public class CartService extends Constants {
         Cart cart = getCartByCustomerId(customerId);
         if(cart==null){
             log.info("Cart for customer with ID {} not found. So no action required.", customerId);
-            return getFailedResponse("Cart not found for provided customer ID");
+            return utils.getFailedResponse("Cart not found for provided customer ID");
         } else {
             log.info("Cart for customer with ID {} found. Starting to remove item {} to cart.", customerId, item);
             boolean updated = false;
@@ -120,7 +121,7 @@ public class CartService extends Constants {
             }
             if(!updated){
                 log.info("Item {} not found in cart for customer with ID {}. So no action required.", item, customerId);
-                return getFailedResponse("Item not found in cart for provided customer ID");
+                return utils.getFailedResponse("Item not found in cart for provided customer ID");
             }
             if(updatedCart.isEmpty()){
                 log.info("Cart is empty after removing last item for customer with ID {}. So deleting the cart.", customerId);
@@ -140,10 +141,10 @@ public class CartService extends Constants {
             Document result = mongoManager.findOneAndUpdate(query, update, cartDb, cartColl, true, false);
             if(result!=null){
                 log.info("Cart updated successfully for removing item for customer with ID {}", customerId);
-                return getSuccessResponse("Item removed successfully", null);
+                return utils.getSuccessResponse("Item removed successfully", null);
             }else{
                 log.error("Failed to update cart for removing item for customer with ID {}", customerId);
-                return getFailedResponse("Failed to remove item");
+                return utils.getFailedResponse("Failed to remove item");
             }
         }
     }
@@ -171,10 +172,10 @@ public class CartService extends Constants {
             log.info("Found cart for customer with ID {}", customerId);
             Cart cart = mapper.convertValue(cartDoc, Cart.class);
             log.debug("Number of items in cart is : {}", cart.getCartItems().size());
-            return getSuccessResponse("Cart found", mapper.convertValue(cart, JsonNode.class));
+            return utils.getSuccessResponse("Cart found", mapper.convertValue(cart, JsonNode.class));
         }else{
             log.info("Cart for customerID {} not found.", customerId);
-            return getFailedResponse("Cart not found");
+            return utils.getFailedResponse("Cart not found");
         }
     }
 
@@ -199,25 +200,25 @@ public class CartService extends Constants {
         boolean result = mongoManager.deleteDocument(query, cartDb, cartColl);
         if(result){
             log.info("Cart deleted/emptied successfully for customer with ID {}", customerId);
-            return getSuccessResponse("Cart deleted/emptied successfully", null);
+            return utils.getSuccessResponse("Cart deleted/emptied successfully", null);
         } else {
             log.error("Failed to delete/empty cart for customer with ID {}", customerId);
-            return getFailedResponse("Failed to delete/empty cart");
+            return utils.getFailedResponse("Failed to delete/empty cart");
         }
     }
 
-    private Response getFailedResponse(String message) {
-        Response response = new Response();
-        response.setStatus(FAILURE);
-        response.setMessage(message);
-        return response;
-    }
-
-    private Response getSuccessResponse(String message, JsonNode data) {
-        Response response = new Response();
-        response.setStatus(SUCCESS);
-        response.setMessage(message);
-        response.setData(data);
-        return response;
-    }
+//    private Response utils.getFailedResponse(String message) {
+//        Response response = new Response();
+//        response.setStatus(FAILURE);
+//        response.setMessage(message);
+//        return response;
+//    }
+//
+//    private Response utils.getSuccessResponse(String message, JsonNode data) {
+//        Response response = new Response();
+//        response.setStatus(SUCCESS);
+//        response.setMessage(message);
+//        response.setData(data);
+//        return response;
+//    }
 }
