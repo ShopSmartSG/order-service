@@ -6,7 +6,7 @@ on:
       - feature/shopsmart-72
   pull_request:
     branches:
-      - feature/shopsmart-72
+      - main
   workflow_dispatch: # allows manual triggering
 
 jobs:
