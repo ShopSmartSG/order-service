@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}  # Ensure that the region is being set
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       ECR_REPO_URI: ${{ secrets.ECR_REPO_URI }}
@@ -36,6 +36,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+
 
       - name: Verify Java Installation
         run: java -version
@@ -80,6 +81,11 @@ jobs:
           fi
 
           echo "Code coverage check passed!"
+          COVERAGE=$(grep -oPm1 "(?<=<counter type=\"LINE\" missed=\")\d+" target/site/jacoco/jacoco.xml)
+          if [ "$COVERAGE" -lt "80" ]; then
+            echo "Code coverage is below 80%, build failed."
+            exit 1
+          fi
         shell: bash
       - name: Debug AWS Credentials
         run: |
@@ -99,7 +105,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-
       - name: Log in to Amazon ECR Public
         run: |
           aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l0d0i0v3
@@ -108,7 +113,6 @@ jobs:
         run: |
           docker build -t shopsmartsg/order-service .
           docker tag shopsmartsg/order-service:latest ${{ secrets.ECR_REPO_URI }}:latest
-
       - name: Push Docker image to ECR
         run: |
           docker push ${{ secrets.ECR_REPO_URI }}:latest
