@@ -63,57 +63,64 @@ public class WSUtils extends Constants{
             request = new HttpEntity<>(httpHeaders);
         }
         log.info("ObjectWS :: Making:: rest {} url call for {}, with request data: {}", method, url, data);
-        ResponseEntity<?> response = restTemplate.exchange(url, method, request, Object.class);
-        if(response.getBody()!=null){
-            if(response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.CREATED
-                    || response.getStatusCode() == HttpStatus.ACCEPTED){
-                log.info("ObjectWS :: Success:: rest {} url call for {} gave status : {}", method, url, response.getStatusCode());
-                resp.setStatus(SUCCESS);
-            }else{
-                log.error("ObjectWS :: Failed:: rest {} url call for {} with status code: {} and error {}", method, url,
-                        response.getStatusCode(), response.getBody());
-                resp.setStatus(FAILURE);
-                resp.setMessage(response.getStatusCode().toString());
-            }
-            if (response.getHeaders().getContentType() != null &&
-                    response.getHeaders().getContentType().includes(MediaType.TEXT_PLAIN)) {
-                try {
-                    responseData.put(MESSAGE, response.getBody().toString());
-                    resp.setData(responseData);
-                } catch (Exception e) {
-                    log.error("ObjectWS :: Failed:: to parse text/plain response body for the url {} with error: ", url, e);
-                    responseData.put(MESSAGE, "Failed to resolve url ".concat(url).concat(" with response: ").concat(String.valueOf(resp)));
-                    resp.setData(responseData);
+        try{
+            ResponseEntity<?> response = restTemplate.exchange(url, method, request, Object.class);
+            if(response.getBody()!=null){
+                if(response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.CREATED
+                        || response.getStatusCode() == HttpStatus.ACCEPTED){
+                    log.info("ObjectWS :: Success:: rest {} url call for {} gave status : {}", method, url, response.getStatusCode());
+                    resp.setStatus(SUCCESS);
+                }else{
+                    log.error("ObjectWS :: Failed:: rest {} url call for {} with status code: {} and error {}", method, url,
+                            response.getStatusCode(), response.getBody());
+                    resp.setStatus(FAILURE);
+                    resp.setMessage(response.getStatusCode().toString());
                 }
-                return resp;
-            } else if (response.getBody() instanceof JsonNode || response.getBody() instanceof ArrayNode
-                    || response.getBody() instanceof ObjectNode) {
-                resp.setData((JsonNode) response.getBody());
-                return resp;
-            } else if (response.getBody() instanceof ArrayList || response.getBody() instanceof Map) {
-                resp.setData(mapper.convertValue(response.getBody(), JsonNode.class));
-                return resp;
-            } else if (response.getBody() instanceof String) {
-                try {
-                    responseData.set(MESSAGE, mapper.readTree((String) response.getBody()));
-                    resp.setData(responseData);
+                if (response.getHeaders().getContentType() != null &&
+                        response.getHeaders().getContentType().includes(MediaType.TEXT_PLAIN)) {
+                    try {
+                        responseData.put(MESSAGE, response.getBody().toString());
+                        resp.setData(responseData);
+                    } catch (Exception e) {
+                        log.error("ObjectWS :: Failed:: to parse text/plain response body for the url {} with error: ", url, e);
+                        responseData.put(MESSAGE, "Failed to resolve url ".concat(url).concat(" with response: ").concat(String.valueOf(resp)));
+                        resp.setData(responseData);
+                    }
                     return resp;
-                } catch (Exception e) {
-                    log.error("ObjectWS :: Failed:: to parse response body for the url {} with error: ", url, e);
-                    responseData.put(MESSAGE, "Failed to resolve url ".concat(url).concat(" with response: ").concat(String.valueOf(resp)));
+                } else if (response.getBody() instanceof JsonNode || response.getBody() instanceof ArrayNode
+                        || response.getBody() instanceof ObjectNode) {
+                    resp.setData((JsonNode) response.getBody());
+                    return resp;
+                } else if (response.getBody() instanceof ArrayList || response.getBody() instanceof Map) {
+                    resp.setData(mapper.convertValue(response.getBody(), JsonNode.class));
+                    return resp;
+                } else if (response.getBody() instanceof String) {
+                    try {
+                        responseData.set(MESSAGE, mapper.readTree((String) response.getBody()));
+                        resp.setData(responseData);
+                        return resp;
+                    } catch (Exception e) {
+                        log.error("ObjectWS :: Failed:: to parse response body for the url {} with error: ", url, e);
+                        responseData.put(MESSAGE, "Failed to resolve url ".concat(url).concat(" with response: ").concat(String.valueOf(resp)));
+                        resp.setData(responseData);
+                        return resp;
+                    }
+                } else {
+                    log.error("ObjectWS :: Exception:: Unexpected response body type: {} for url {}", response.getBody().getClass(), url);
+                    responseData.put(MESSAGE, "Exception occurred due to unidentified body type for url ".concat(url)
+                            .concat(" with response: ").concat(String.valueOf(resp)));
                     resp.setData(responseData);
                     return resp;
                 }
             } else {
-                log.error("ObjectWS :: Exception:: Unexpected response body type: {} for url {}", response.getBody().getClass(), url);
-                responseData.put(MESSAGE, "Exception occurred due to unidentified body type for url ".concat(url)
-                        .concat(" with response: ").concat(String.valueOf(resp)));
+                responseData.put(MESSAGE, "No response body found for url ".concat(url).concat(" with response : ").concat(String.valueOf(resp)));
                 resp.setData(responseData);
                 return resp;
             }
-        } else {
-            responseData.put(MESSAGE, "No response body found for url ".concat(url).concat(" with response : ").concat(String.valueOf(resp)));
-            resp.setData(responseData);
+        }catch(Exception ex){
+            log.error("ObjectWS :: Failed:: rest {} url call for {} with error: {}", method, url, ex);
+            resp.setStatus(FAILURE);
+            resp.setMessage(ex.getMessage());
             return resp;
         }
     }
