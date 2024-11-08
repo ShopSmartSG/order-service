@@ -517,14 +517,14 @@ public class OrderService extends Constants {
 
     private void updateCustomerRewardPoints(Document orderDoc){
         log.info("Updating customer reward points for orderId: {} and customerId : {}", orderDoc.get(ORDER_ID), orderDoc.get(CUSTOMER_ID));
-        BigDecimal orderPrice = orderDoc.get(TOTAL_PRICE, BigDecimal.class);
+        BigDecimal orderPrice = mapper.convertValue(orderDoc.get(TOTAL_PRICE), BigDecimal.class);
         String customerId = orderDoc.get(CUSTOMER_ID, String.class);
         //url is /customers/{customer-id}/rewards/{order-price}
         String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId)
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
         log.debug("URL to update customer reward points is : {}", url);
         try{
-            Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PATCH, 1000, 30000);
+            Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
                 log.error("Failed to update customer reward points for orderId: {}", orderDoc.get(ORDER_ID));
             }else{
@@ -537,7 +537,7 @@ public class OrderService extends Constants {
     }
     private void updateMerchantEarnings(Document orderDoc){
         log.info("Updating merchant earnings for orderId : {} and merchantId {}", orderDoc.get(ORDER_ID), orderDoc.get(MERCHANT_ID));
-        BigDecimal orderPrice = orderDoc.get(TOTAL_PRICE, BigDecimal.class);
+        BigDecimal orderPrice = mapper.convertValue(orderDoc.get(TOTAL_PRICE), BigDecimal.class);
         String merchantId = orderDoc.get(MERCHANT_ID, String.class);
         //url is /merchants/{merchant-id}/rewards/{order-price}
         String url = profileServiceUrl.concat("merchants").concat(SLASH).concat(merchantId)
