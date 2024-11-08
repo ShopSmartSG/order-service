@@ -89,7 +89,7 @@ public class WSUtils extends Constants{
                     || response.getBody() instanceof ObjectNode) {
                 resp.setData((JsonNode) response.getBody());
                 return resp;
-            } else if (response.getBody() instanceof ArrayList) {
+            } else if (response.getBody() instanceof ArrayList || response.getBody() instanceof Map) {
                 resp.setData(mapper.convertValue(response.getBody(), JsonNode.class));
                 return resp;
             } else if (response.getBody() instanceof String) {
