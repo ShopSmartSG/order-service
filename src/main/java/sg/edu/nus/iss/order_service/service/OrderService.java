@@ -345,6 +345,22 @@ public class OrderService extends Constants {
         }
     }
 
+    public Response getActiveOrdersForDelivery(){
+        log.info("Fetching all active orders available for delivery, having status READY and opted for delivery");
+        Document query = new Document(STATUS, OrderStatus.READY);
+        query.put(USE_DELIVERY, true);
+        log.info("Query to fetch active orders for delivery : {} from orders coll", query);
+        List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
+        if(orders!=null && !orders.isEmpty()){
+            log.info("Found active orders for delivery having status READY and opted for delivery, count {}", orders.size());
+            List<Order> orderList = mapper.convertValue(orders, List.class);
+            return utils.getSuccessResponse("Active orders found for delivery",mapper.convertValue(orderList, ArrayNode.class));
+        }else{
+            log.info("No active orders found for delivery having status READY and opted for delivery");
+            return utils.getFailedResponse("No active orders found for delivery having status READY and opted for delivery");
+        }
+    }
+
     public Response getOrderByOrderId(String orderId){
         log.info("Fetching order by orderId: {}", orderId);
         Document query = new Document(ORDER_ID, orderId);

@@ -248,6 +248,23 @@ public class OrderController extends Constants {
         }
     }
 
+    @GetMapping("/activeOrdersForDelivery")
+    @Operation(summary = "Retrieve all active orders marked for delivery")
+    public ResponseEntity<JsonNode> getActiveOrdersForDelivery() {
+        log.info("Retrieving all active orders for delivery and in READY state");
+        Response activeOrdersListResp = orderService.getActiveOrdersForDelivery();
+        if (activeOrdersListResp == null) {
+            log.error("Some exception happened trying to get all active orders marked for delivery and in READY state");
+            throw new ResourceNotFoundException("Some exception happened trying to get all active orders for delivery and in READY state");
+        } else if (FAILURE.equalsIgnoreCase(activeOrdersListResp.getStatus())) {
+            log.error("No active orders found marked for delivery and in READY state");
+            throw new ResourceNotFoundException("No active orders found marked for delivery and in READY state");
+        } else {
+            log.info("Active orders found marked for delivery and in READY state. Orders count : {}", activeOrdersListResp.getData().size());
+            return ResponseEntity.ok(activeOrdersListResp.getData());
+        }
+    }
+
     @PutMapping("/{orderId}/{status}")
     @Operation(summary = "Update order status by orderId")
     public ResponseEntity<JsonNode> updateOrderStatus(@PathVariable String orderId, @PathVariable OrderStatus status,
