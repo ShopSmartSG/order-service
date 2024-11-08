@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.swagger.v3.core.util.Json;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,6 @@ import sg.edu.nus.iss.order_service.utils.WSUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class OrderService extends Constants {
@@ -45,11 +45,20 @@ public class OrderService extends Constants {
     @Value("${"+CANCELLED_ORDERS_COLL+"}")
     private String cancelledOrderColl;
 
-    @Value("${product.service.url.list}")
-    private String productIdsListUrl; //http://localhost:8080/products/ids with query param as "productIds"
+//    @Value("${product.service.url.list}")
+//    private String productIdsListUrl; //http://localhost:8080/products/ids with query param as "productIds"
 
-    @Value("${product.service.url.update}")
-    private String productUpdateUrl; //http://localhost:8080/merchants needs in path : {merchantId}/products/{productId}
+//    @Value("${product.service.url.update}")
+//    private String productUpdateUrl; //http://localhost:8080/merchants needs in path : {merchantId}/products/{productId}
+
+    @Value("${product.service.url}")
+    private String productServiceUrl; //http://product-service:95/
+
+    @Value("${profile.service.url}")
+    private String profileServiceUrl; //http://profile-service:80/
+
+    @Value("${delivery.service.url}")
+    private String deliveryServiceUrl; //http://delivery-service:92/
 
     @Autowired
     public OrderService(CartService cartService, MongoManager mongoManager, WSUtils wsUtils, Utils utils) {
@@ -59,7 +68,7 @@ public class OrderService extends Constants {
         this.utils = utils;
     }
 
-    public Response createOrderFromCart(String customerId){
+    public Response createOrderFromCart(String customerId, boolean useRewards, boolean useDelivery){
         log.info("Creating order for customer: {}", customerId);
         Cart cart = cartService.getCartByCustomerId(customerId);
         if(cart == null || cart.getCartItems().isEmpty()){
@@ -75,6 +84,8 @@ public class OrderService extends Constants {
         order.setUpdatedDate(System.currentTimeMillis());
         order.setCreatedBy(CUSTOMER);
         order.setUpdatedBy(CUSTOMER);
+        order.setUseRewards(useRewards);
+        order.setUseDelivery(useDelivery);
 
         List<Product> productDetails = getProductDetailsForItems(cart.getCartItems());
         if(productDetails == null || productDetails.isEmpty()){
@@ -86,6 +97,15 @@ public class OrderService extends Constants {
         order.setOrderItems(cartItemsWithPrice);
         order.setTotalPrice(calculateTotalPrice(cartItemsWithPrice));
 
+        //fetch customer reward points to offset
+        if(order.isUseRewards()){
+            BigDecimal rewardPointsAmountOffset = getRewardPointsOffsetForCustomer(order.getCustomerId());
+            order.setRewardsAmount(rewardPointsAmountOffset);
+            order.setTotalPrice(order.getTotalPrice().subtract(rewardPointsAmountOffset));
+        } else {
+            order.setRewardsAmount(BigDecimal.ZERO);
+        }
+
         log.info("Order to be created : {}", order);
 
         Document insertDocument = mapper.convertValue(order, Document.class);
@@ -94,8 +114,10 @@ public class OrderService extends Constants {
             log.info("Order created successfully for customer: {}", customerId);
             cartService.deleteCartByCustomerId(customerId);
             List<ProductUpdateReqModel> productsToBeUpdated = generateProductUpdateReqObts(productDetails, cart.getCartItems());
-            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(productUpdateUrl);
-            String url = uriBuilder.toUriString();
+            //url will be merchants/{merchantId}/products/{productId}
+//            String productUpdateUrl = productServiceUrl.concat("merchants");
+//            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(productUpdateUrl);
+            String url = productServiceUrl.concat("merchants");
             int errorCounts = 0;
             for(ProductUpdateReqModel reqProd : productsToBeUpdated){
                 log.info("Updating stock for productId: {}", reqProd.getProductId());
@@ -135,27 +157,27 @@ public class OrderService extends Constants {
             prodIds = prodIds.concat(item.getProductId()).concat(",");
         }
         prodIds = prodIds.substring(0, prodIds.length()-1);
+        //url will be products/ids with query param as "productIds"
+        String productIdsListUrl = productServiceUrl.concat("products/ids");
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(productIdsListUrl);
         uriBuilder.queryParam("productIds", prodIds);
-
+        log.debug("URL to get product details for productIds is : {}", uriBuilder.toUriString());
         try{
             Response response = wsUtils.makeWSCallObject(uriBuilder.toUriString(), null, new HashMap<>(), HttpMethod.GET, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
                 log.error("Failed to get product details for productIds: {}", prodIds);
-                return null;
+                return new ArrayList<>();
             }
             ArrayNode data = (ArrayNode) response.getData();
-//            String json = mapper.writeValueAsString(data);
-//            List<Product> products = mapper.readValue(json, new TypeReference<List<Product>>() {});
             List<Product> products = mapper.convertValue(data, new TypeReference<List<Product>>() {});
             if(products == null || products.isEmpty()){
-                return null;
+                return new ArrayList<>();
             }
             log.info("Product details found for productIds: {}", prodIds);
             return products;
         }catch(Exception ex){
             log.error("Exception occurred while getting product details for productIds: {}", prodIds);
-            return null;
+            return new ArrayList<>();
         }
     }
 
@@ -190,15 +212,57 @@ public class OrderService extends Constants {
         return  new ArrayList<>(productUpdateReqMap.values());
     }
 
+    private BigDecimal getRewardPointsOffsetForCustomer(String customerId){
+        //from profile service needs to hit path : customers/{customer-id}/rewards  a GET call
+//        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(profileServiceUrl);
+        String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId).concat(SLASH).concat("rewards");
+        log.debug("URL to get reward points and offset amount for customerId: {} is {}", customerId, url);
+        try{
+            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.GET, 1000, 30000);
+            if(FAILURE.equalsIgnoreCase(response.getStatus())){
+                log.error("Failed to get reward points and offset amount for customerId: {}", customerId);
+                return BigDecimal.ZERO;
+            }
+            JsonNode data = response.getData();
+            return data.get("rewardAmount").decimalValue();
+        }catch(Exception ex){
+            log.error("Exception occurred while getting reward points and offset amount for customerId: {}", customerId);
+            return BigDecimal.ZERO;
+        }
+    }
+
     private BigDecimal calculateTotalPrice(List<Item> cartItems) {
         return cartItems.stream()
                 .map(item -> item.getPrice().multiply(new BigDecimal(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Response getCompletedOrdersByProfileId(String profileId, String profileIdKey){
+    public Response getOrdersListByProfileId(String listType, String profileType, String id){
+        log.info("Fetching orders for profileType: {}, id: {}", profileType, id);
+        String profileIdentifierField = utils.getProfileIdentifierFieldBasedOnRole(profileType);
+        if(StringUtils.isEmpty(profileIdentifierField)){
+            log.error("Invalid profileType provided for fetching orders, profileType: {}", profileType);
+            return utils.getFailedResponse("Invalid profileType provided for fetching orders");
+        }
+        if(COMPLETED.equalsIgnoreCase(listType)){
+            log.info("Fetching completed orders for profileType: {}, id: {}", profileType, id);
+            return getCompletedOrdersByProfileId(id, profileIdentifierField);
+        }else if(CANCELLED.equalsIgnoreCase(listType)){
+            log.info("Fetching cancelled orders for profileType: {}, id: {}", profileType, id);
+            return getCancelledOrdersByProfileId(id, profileIdentifierField);
+        }else if(ACTIVE.equalsIgnoreCase(listType)){
+            log.info("Fetching active orders for profileType: {}, id: {}", profileType, id);
+            return getActiveOrdersByProfileId(id, profileIdentifierField);
+        }else{
+            log.info("Fetching all orders for profileType: {}, id: {}", profileType, id);
+            return getAllOrdersByProfileId(id, profileIdentifierField);
+        }
+    }
+
+    private Response getCompletedOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching completed orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
+        log.info("Query to fetch completed orders : {} from completedOrders coll", query);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, completedOrderColl);
         if(orders!=null && !orders.isEmpty()){
             log.info("Found completed orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
@@ -212,9 +276,10 @@ public class OrderService extends Constants {
         }
     }
 
-    public Response getCancelledOrdersByProfileId(String profileId, String profileIdKey){
+    private Response getCancelledOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching cancelled orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
+        log.info("Query to fetch cancelled orders : {} from cancelledOrders coll", query);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, cancelledOrderColl);
         if(orders!=null && !orders.isEmpty()){
             log.info("Found cancelled orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
@@ -228,9 +293,14 @@ public class OrderService extends Constants {
         }
     }
 
-    public Response getActiveOrdersByProfileId(String profileId, String profileIdKey){
+    private Response getActiveOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching active orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
+//        List<String> nonActiveStatus = new ArrayList<>();
+//        nonActiveStatus.add(OrderStatus.COMPLETED.toString());
+//        nonActiveStatus.add(OrderStatus.CANCELLED.toString());
+//        query.put("status", new Document("$nin", nonActiveStatus));
+        log.info("Query to fetch only active orders : {} from orders coll", query);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
         if(orders!=null && !orders.isEmpty()){
             log.info("Found active orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
@@ -244,7 +314,7 @@ public class OrderService extends Constants {
         }
     }
 
-    public Response getAllOrdersByProfileId(String profileId, String profileIdKey){
+    private Response getAllOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
         List<Document> totalOrders = new ArrayList<>();
@@ -290,7 +360,7 @@ public class OrderService extends Constants {
     }
 
     //later on we need to implement Chain of Responsibility pattern to handle this.
-    public Response updateOrderStatus(String orderId, OrderStatus status){
+    public Response updateOrderStatus(String orderId, OrderStatus status, JsonNode payload){
         log.info("Updating order status for orderId: {} to status : {}", orderId, status);
         Document query = new Document(ORDER_ID, orderId);
         Document orderDoc = mongoManager.findDocument(query, orderDb, orderColl);
@@ -314,11 +384,27 @@ public class OrderService extends Constants {
             }
         } else if(status.equals(OrderStatus.COMPLETED)){
             try{
+                boolean usingDelivery = orderDoc.get(USE_DELIVERY, Boolean.class);
+                if(usingDelivery && orderDoc.containsKey(DELIVERY_PARTNER_ID)){
+                    //update delivery service about status change if delivery opted for
+                    String deliveryPartnerId = orderDoc.get(DELIVERY_PARTNER_ID, String.class);
+                    boolean deliveryStatusRes = updateDeliveryStatusforOrder(orderDoc, false,
+                            deliveryPartnerId, OrderStatus.COMPLETED);
+                    if(!deliveryStatusRes){
+                        log.error("Failed to complete delivery for orderId: {} for deliveryPartnerId: {}", orderId, deliveryPartnerId);
+                        return utils.getFailedResponse("Failed to complete delivery for order");
+                    }
+                    log.info("Delivery completed successfully in delivery service for orderId: {} and deliveryPartnerId: {}, updating data in order colls.",
+                            orderId, deliveryPartnerId);
+                }
                 orderDoc.put(STATUS, OrderStatus.COMPLETED);
                 orderDoc.put(UPDATED_AT, System.currentTimeMillis());
-                orderDoc.put(UPDATED_BY, MERCHANT);
+                orderDoc.put(UPDATED_BY, usingDelivery ? DELIVERY_PARTNER : MERCHANT);
                 mongoManager.insertDocument(orderDoc, orderDb, completedOrderColl);
                 mongoManager.deleteDocument(query, orderDb, orderColl);
+
+                updateMerchantEarnings(orderDoc);
+                updateCustomerRewardPoints(orderDoc);
                 log.info("Order has been completed successfully for orderId: {} and kept in completed coll", orderId);
                 return utils.getSuccessResponse("Order has been completed successfully for orderId: ".concat(orderId).concat(" and kept in completed coll"), null);
             }catch(Exception ex){
@@ -338,6 +424,61 @@ public class OrderService extends Constants {
                 log.error("Exception occurred while marking order status for orderId: {} as cancelled", orderId);
                 return utils.getFailedResponse("Exception occurred while marking order status for orderId: ".concat(orderId).concat(" as cancelled "));
             }
+        } else if(status.equals(OrderStatus.DELIVERY_ACCEPTED)){
+            if(!orderDoc.containsKey(USE_DELIVERY) || !orderDoc.get(USE_DELIVERY, Boolean.class)){
+                log.error("Attempting to start delivery for orderId: {} without opting for delivery", orderId);
+                return utils.getFailedResponse("Attempting to start delivery for order which didnt opt for delivery");
+            }
+            if(payload==null || !payload.hasNonNull(DELIVERY_PARTNER_ID)){
+                log.error("No delivery partner id found in payload {} for orderId: {} while starting delivery", payload, orderId);
+                return utils.getFailedResponse("No delivery partner id provided, unable to start delivery");
+            }
+            String deliveryPartnerId = payload.get(DELIVERY_PARTNER_ID).asText();
+            boolean deliveryStatusRes = updateDeliveryStatusforOrder(orderDoc, true, deliveryPartnerId, OrderStatus.DELIVERY_ACCEPTED);
+            if(!deliveryStatusRes){
+                log.error("Failed to start delivery for orderId: {} for deliveryPartnerId: {}", orderId, deliveryPartnerId);
+                return utils.getFailedResponse("Failed to start delivery for order");
+            }
+            log.info("Delivery record successfully created in delivery service for orderId: {} and deliveryPartnerId: {}, updating data in order colls.",
+                    orderId, deliveryPartnerId);
+            Document updateDoc = new Document(STATUS, status);
+            updateDoc.put(DELIVERY_PARTNER_ID, deliveryPartnerId);
+            updateDoc.put(UPDATED_AT, System.currentTimeMillis());
+            updateDoc.put(UPDATED_BY, DELIVERY_PARTNER);
+            log.info("Starting delivery for order: {} using query : {}", orderId, mapper.convertValue(query, JsonNode.class));
+            Document result = mongoManager.findOneAndUpdate(query, new Document("$set", updateDoc), orderDb, orderColl, false, true);
+            if(result != null){
+                log.info("Started delivery flow successfully for order: {} and kept status : {}", orderId, status);
+                return utils.getSuccessResponse("Delivery has been started for the order successfully", null);
+            }else{
+                log.error("Failed to initiate delivery for order: {},  status : {}", orderId, status);
+                return utils.getFailedResponse("Failed to initiate delivery for order");
+            }
+        } else if(status.equals(OrderStatus.DELIVERY_PICKED_UP)){
+            if(!orderDoc.containsKey(USE_DELIVERY) || !orderDoc.get(USE_DELIVERY, Boolean.class) || !orderDoc.containsKey(DELIVERY_PARTNER_ID)){
+                log.error("Delivery not yet started for the order: {} or not opted for delivery", orderId);
+                return utils.getFailedResponse("Delivery has not yet started for this order or not opted for delivery");
+            }
+            String deliveryPartnerId = orderDoc.get(DELIVERY_PARTNER_ID, String.class);
+            boolean deliveryStatusRes = updateDeliveryStatusforOrder(orderDoc, false, deliveryPartnerId, OrderStatus.DELIVERY_PICKED_UP);
+            if(!deliveryStatusRes){
+                log.error("Failed to update delivery status for orderId: {} for deliveryPartnerId: {} in delivery service", orderId, deliveryPartnerId);
+                return utils.getFailedResponse("Failed to update delivery status for order");
+            }
+            log.info("Delivery record successfully updated in delivery service for orderId: {} and deliveryPartnerId: {}, updating data in order colls.",
+                    orderId, deliveryPartnerId);
+            Document updateDoc = new Document(STATUS, status);
+            updateDoc.put(UPDATED_AT, System.currentTimeMillis());
+            updateDoc.put(UPDATED_BY, DELIVERY_PARTNER);
+            log.info("Updating delivery status for order: {} using query : {}", orderId, mapper.convertValue(query, JsonNode.class));
+            Document result = mongoManager.findOneAndUpdate(query, new Document("$set", updateDoc), orderDb, orderColl, false, true);
+            if(result != null){
+                log.info("Successfully update delivery status for order: {} and kept status : {}", orderId, status);
+                return utils.getSuccessResponse("Delivery status has been updated for the order successfully", null);
+            }else{
+                log.error("Failed to update delivery status for order: {},  status : {}", orderId, status);
+                return utils.getFailedResponse("Failed to update delivery status for order");
+            }
         } else{
             log.error("Invalid status provided for orderId: {}", orderId);
             return utils.getFailedResponse("Invalid status provided for orderId: ".concat(orderId));
@@ -354,6 +495,88 @@ public class OrderService extends Constants {
             return true;
         }else{
             log.error("Failed to delete order for orderId: {}", orderId);
+            return false;
+        }
+    }
+
+    private void updateCustomerRewardPoints(Document orderDoc){
+        log.info("Updating customer reward points for orderId: {} and customerId : {}", orderDoc.get(ORDER_ID), orderDoc.get(CUSTOMER_ID));
+        BigDecimal orderPrice = orderDoc.get(TOTAL_PRICE, BigDecimal.class);
+        String customerId = orderDoc.get(CUSTOMER_ID, String.class);
+        //url is /customers/{customer-id}/rewards/{order-price}
+        String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId)
+                .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        log.debug("URL to update customer reward points is : {}", url);
+        try{
+            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.PATCH, 1000, 30000);
+            if(FAILURE.equalsIgnoreCase(response.getStatus())){
+                log.error("Failed to update customer reward points for orderId: {}", orderDoc.get(ORDER_ID));
+            }else{
+                log.info("Customer {} reward points updated successfully for orderId: {} with order amount {}",
+                        customerId, orderDoc.get(ORDER_ID), orderPrice);
+            }
+        }catch(Exception ex){
+            log.error("Exception occurred while updating customer reward points for orderId: {}", orderDoc.get(ORDER_ID));
+        }
+    }
+    private void updateMerchantEarnings(Document orderDoc){
+        log.info("Updating merchant earnings for orderId : {} and merchantId {}", orderDoc.get(ORDER_ID), orderDoc.get(MERCHANT_ID));
+        BigDecimal orderPrice = orderDoc.get(TOTAL_PRICE, BigDecimal.class);
+        String merchantId = orderDoc.get(MERCHANT_ID, String.class);
+        //url is /merchants/{merchant-id}/rewards/{order-price}
+        String url = profileServiceUrl.concat("merchants").concat(SLASH).concat(merchantId)
+                .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        log.debug("URL to update merchant earnings is : {}", url);
+        try{
+            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
+            if(FAILURE.equalsIgnoreCase(response.getStatus())){
+                log.error("Failed to update merchant earnings for orderId: {}", orderDoc.get(ORDER_ID));
+            }else{
+                log.info("Merchant {} earnings updated successfully for orderId: {} with order amount {}",
+                        merchantId, orderDoc.get(ORDER_ID), orderPrice);
+            }
+        }catch(Exception ex){
+            log.error("Exception occurred while updating merchant earnings for orderId: {}", orderDoc.get(ORDER_ID));
+        }
+    }
+    private boolean updateDeliveryStatusforOrder(Document orderDoc, boolean isCreateNewDelivery, String deliveryPartnerId, OrderStatus status){
+        log.info("Updating delivery status for orderId : {} and deliveryPartnerId {} with status {}", orderDoc.get(ORDER_ID), deliveryPartnerId, status);
+        String orderId = orderDoc.get(ORDER_ID, String.class);
+        String customerId = orderDoc.get(CUSTOMER_ID, String.class);
+        DeliveryStatusReqModel reqModel = new DeliveryStatusReqModel();
+        reqModel.setOrderId(orderId);
+        reqModel.setCustomerId(customerId);
+        reqModel.setDeliveryPersonId(deliveryPartnerId);
+        reqModel.setStatus(status);
+        reqModel.setMessage("Delivery status updated for orderId: ".concat(orderId).concat(" to status : ").concat(status.toString()));
+        String url = deliveryServiceUrl.concat("deliveries");
+        HttpMethod method;
+        JsonNode payload;
+        if(isCreateNewDelivery){
+            //to create new delivery : deliveries/{orderId}/{deliveryPartnerId}/{customerId}
+            url = url.concat(SLASH).concat(orderId)
+                    .concat(SLASH).concat(deliveryPartnerId).concat(SLASH).concat(customerId);
+            method = HttpMethod.POST;
+            payload = null;
+        }else{
+            //to update delivery status : deliveries/status
+            url = url.concat(SLASH).concat("status");
+            method = HttpMethod.PUT;
+            payload = mapper.convertValue(reqModel, JsonNode.class);
+        }
+        log.debug("URL to update delivery status is : {} with payload {}", url, payload);
+        try{
+            Response response = wsUtils.makeWSCallObject(url, payload, new HashMap<>(), method, 1000, 30000);
+            if(FAILURE.equalsIgnoreCase(response.getStatus())){
+                log.error("Failed to update delivery status for orderId: {} for status {}", orderDoc.get(ORDER_ID), status);
+                return false;
+            }else{
+                log.info("Delivery status updated successfully for orderId: {} with deliveryPartnerId {} for status {}",
+                        orderDoc.get(ORDER_ID), orderDoc.get(DELIVERY_PARTNER), status);
+                return true;
+            }
+        }catch(Exception ex){
+            log.error("Exception occurred while updating delivery status for orderId: {} for status {}", orderDoc.get(ORDER_ID), status);
             return false;
         }
     }

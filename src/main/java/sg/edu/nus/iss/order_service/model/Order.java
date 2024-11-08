@@ -15,13 +15,18 @@ import java.util.Map;
 import java.util.UUID;
 
 @Data
-//@Document(collection = "#{@orderCollectionResolver.resolve(#root)}")
 public class Order {
-//    @Id
-//    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    /*
+    * When moving to use annotation based mongo updates
+    * then use : @Document(collection = "#{@orderCollectionResolver.resolve(#root)}")
+    * and for orderId ;
+    * @Id
+    * @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    */
     private String orderId;
     private String customerId;
     private String merchantId;
+    private String deliveryPartnerId;
     private List<Item> orderItems;
     private BigDecimal totalPrice;
     private OrderStatus status;
@@ -29,4 +34,7 @@ public class Order {
     private long updatedDate;
     private String createdBy;
     private String updatedBy;
+    private boolean useRewards = false;
+    private boolean useDelivery = false;
+    private BigDecimal rewardsAmount;
 }

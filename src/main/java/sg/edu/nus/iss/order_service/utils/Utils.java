@@ -20,4 +20,16 @@ public class Utils extends Constants{
         response.setData(data);
         return response;
     }
+
+    public String getProfileIdentifierFieldBasedOnRole(String profileType) {
+        if (CUSTOMER.equalsIgnoreCase(profileType)) {
+            return CUSTOMER_ID;
+        } else if (MERCHANT.equalsIgnoreCase(profileType)) {
+            return MERCHANT_ID;
+        } else if (DELIVERY_PARTNER.equalsIgnoreCase(profileType)) {
+            return DELIVERY_PARTNER_ID;
+        } else{
+            return "";
+        }
+    }
 }
