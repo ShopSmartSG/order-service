@@ -524,7 +524,7 @@ public class OrderService extends Constants {
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
         log.debug("URL to update customer reward points is : {}", url);
         try{
-            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.PATCH, 1000, 30000);
+            Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PATCH, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
                 log.error("Failed to update customer reward points for orderId: {}", orderDoc.get(ORDER_ID));
             }else{
@@ -544,7 +544,7 @@ public class OrderService extends Constants {
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
         log.debug("URL to update merchant earnings is : {}", url);
         try{
-            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
+            Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
                 log.error("Failed to update merchant earnings for orderId: {}", orderDoc.get(ORDER_ID));
             }else{
