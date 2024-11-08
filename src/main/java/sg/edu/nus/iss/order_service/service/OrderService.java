@@ -569,9 +569,14 @@ public class OrderService extends Constants {
         HttpMethod method;
         JsonNode payload;
         if(isCreateNewDelivery){
-            //to create new delivery : deliveries/{orderId}/{deliveryPartnerId}/{customerId}
-            url = url.concat(SLASH).concat(orderId)
-                    .concat(SLASH).concat(deliveryPartnerId).concat(SLASH).concat(customerId);
+            //to create new delivery : deliveries/?orderId={orderId}&deliveryPersonId={deliveryPartnerId}&customerId={customerId}
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url.concat(SLASH));
+            uriBuilder.queryParam(ORDER_ID, orderId);
+            uriBuilder.queryParam("deliveryPersonId", deliveryPartnerId);
+            uriBuilder.queryParam(CUSTOMER_ID, customerId);
+//            url = url.concat(SLASH).concat(orderId)
+//                    .concat(SLASH).concat(deliveryPartnerId).concat(SLASH).concat(customerId);
+            url=uriBuilder.toUriString();
             method = HttpMethod.POST;
             payload = null;
         }else{
