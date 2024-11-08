@@ -8,6 +8,8 @@ public enum OrderStatus {
     CANCELLED,
     ACCEPTED,
     READY,
+    DELIVERY_ACCEPTED,
+    DELIVERY_PICKED_UP,
     COMPLETED;
 
     @JsonCreator
