@@ -45,12 +45,6 @@ public class OrderService extends Constants {
     @Value("${"+CANCELLED_ORDERS_COLL+"}")
     private String cancelledOrderColl;
 
-//    @Value("${product.service.url.list}")
-//    private String productIdsListUrl; //http://localhost:8080/products/ids with query param as "productIds"
-
-//    @Value("${product.service.url.update}")
-//    private String productUpdateUrl; //http://localhost:8080/merchants needs in path : {merchantId}/products/{productId}
-
     @Value("${product.service.url}")
     private String productServiceUrl; //http://product-service:95/
 
@@ -111,9 +105,6 @@ public class OrderService extends Constants {
                 order.setRewardsAmountUsed(BigDecimal.ZERO);
                 order.setCustomerRewardsPointsUsed(BigDecimal.ZERO);
             }
-//            order.setRewardsAmountUsed(rewardPointsAmountOffset);
-//            order.setTotalPrice(order.getTotalPrice().subtract(rewardPointsAmountOffset));
-//            updateCustomerRewardPoints(order.getOrderId(), order.getCustomerId(), BigDecimal.ZERO);
         } else {
             order.setRewardsAmountUsed(BigDecimal.ZERO);
             order.setCustomerRewardsPointsUsed(BigDecimal.ZERO);
@@ -128,8 +119,6 @@ public class OrderService extends Constants {
             cartService.deleteCartByCustomerId(customerId);
             List<ProductUpdateReqModel> productsToBeUpdated = generateProductUpdateReqObts(productDetails, cart.getCartItems());
             //url will be merchants/{merchantId}/products/{productId}
-//            String productUpdateUrl = productServiceUrl.concat("merchants");
-//            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(productUpdateUrl);
             String url = productServiceUrl.concat("merchants");
             int errorCounts = 0;
             for(ProductUpdateReqModel reqProd : productsToBeUpdated){
@@ -227,21 +216,17 @@ public class OrderService extends Constants {
 
     private JsonNode getRewardPointsOffsetForCustomer(String customerId){
         //from profile service needs to hit path : customers/{customer-id}/rewards  a GET call
-//        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(profileServiceUrl);
         String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId).concat(SLASH).concat("rewards");
         log.debug("URL to get reward points and offset amount for customerId: {} is {}", customerId, url);
         try{
             Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.GET, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
                 log.error("Failed to get reward points and offset amount for customerId: {}", customerId);
-//                return BigDecimal.ZERO;
             }
             JsonNode data = response.getData();
-//            return data.get("rewardAmount").decimalValue();
             return data;
         }catch(Exception ex){
             log.error("Exception occurred while getting reward points and offset amount for customerId: {}", customerId);
-//            return BigDecimal.ZERO;
             return null;
         }
     }
@@ -311,10 +296,6 @@ public class OrderService extends Constants {
     private Response getActiveOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching active orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
-//        List<String> nonActiveStatus = new ArrayList<>();
-//        nonActiveStatus.add(OrderStatus.COMPLETED.toString());
-//        nonActiveStatus.add(OrderStatus.CANCELLED.toString());
-//        query.put("status", new Document("$nin", nonActiveStatus));
         log.info("Query to fetch only active orders : {} from orders coll", query);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
         if(orders!=null && !orders.isEmpty()){
@@ -536,8 +517,6 @@ public class OrderService extends Constants {
 
     private void updateCustomerRewardPoints(String orderId, String customerId, BigDecimal orderPrice){
         log.info("Updating customer reward points for orderId: {} and customerId : {}", orderId, customerId);
-//        BigDecimal orderPrice = mapper.convertValue(orderDoc.get(TOTAL_PRICE), BigDecimal.class);
-//        String customerId = orderDoc.get(CUSTOMER_ID, String.class);
         //url is /customers/{customer-id}/rewards/{order-price}
         String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId)
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
@@ -556,8 +535,6 @@ public class OrderService extends Constants {
     }
     private void updateMerchantEarnings(String orderId, String merchantId, BigDecimal orderPrice){
         log.info("Updating merchant earnings for orderId : {} and merchantId {}", orderId, merchantId);
-//        BigDecimal orderPrice = mapper.convertValue(orderDoc.get(TOTAL_PRICE), BigDecimal.class);
-//        String merchantId = orderDoc.get(MERCHANT_ID, String.class);
         //url is /merchants/{merchant-id}/rewards/{order-price}
         String url = profileServiceUrl.concat("merchants").concat(SLASH).concat(merchantId)
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
@@ -593,8 +570,6 @@ public class OrderService extends Constants {
             uriBuilder.queryParam(ORDER_ID, orderId);
             uriBuilder.queryParam("deliveryPersonId", deliveryPartnerId);
             uriBuilder.queryParam(CUSTOMER_ID, customerId);
-//            url = url.concat(SLASH).concat(orderId)
-//                    .concat(SLASH).concat(deliveryPartnerId).concat(SLASH).concat(customerId);
             url=uriBuilder.toUriString();
             method = HttpMethod.POST;
             payload = null;
