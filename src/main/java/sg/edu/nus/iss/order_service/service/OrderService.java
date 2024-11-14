@@ -45,12 +45,6 @@ public class OrderService extends Constants {
     @Value("${"+CANCELLED_ORDERS_COLL+"}")
     private String cancelledOrderColl;
 
-//    @Value("${product.service.url.list}")
-//    private String productIdsListUrl; //http://localhost:8080/products/ids with query param as "productIds"
-
-//    @Value("${product.service.url.update}")
-//    private String productUpdateUrl; //http://localhost:8080/merchants needs in path : {merchantId}/products/{productId}
-
     @Value("${product.service.url}")
     private String productServiceUrl; //http://product-service:95/
 
@@ -99,11 +93,21 @@ public class OrderService extends Constants {
 
         //fetch customer reward points to offset
         if(order.isUseRewards()){
-            BigDecimal rewardPointsAmountOffset = getRewardPointsOffsetForCustomer(order.getCustomerId());
-            order.setRewardsAmount(rewardPointsAmountOffset);
-            order.setTotalPrice(order.getTotalPrice().subtract(rewardPointsAmountOffset));
+            JsonNode rewrdsObject = getRewardPointsOffsetForCustomer(order.getCustomerId());
+            if(rewrdsObject!=null){
+                BigDecimal rewardPointsAmountOffset = rewrdsObject.get("rewardAmount").decimalValue();
+                BigDecimal rewardsPoints = rewrdsObject.get("rewardPoints").decimalValue();
+                order.setRewardsAmountUsed(rewardPointsAmountOffset);
+                order.setCustomerRewardsPointsUsed(rewardsPoints);
+                order.setTotalPrice(order.getTotalPrice().subtract(rewardPointsAmountOffset));
+                updateCustomerRewardPoints(order.getOrderId(), order.getCustomerId(), BigDecimal.ZERO);
+            } else {
+                order.setRewardsAmountUsed(BigDecimal.ZERO);
+                order.setCustomerRewardsPointsUsed(BigDecimal.ZERO);
+            }
         } else {
-            order.setRewardsAmount(BigDecimal.ZERO);
+            order.setRewardsAmountUsed(BigDecimal.ZERO);
+            order.setCustomerRewardsPointsUsed(BigDecimal.ZERO);
         }
 
         log.info("Order to be created : {}", order);
@@ -115,8 +119,6 @@ public class OrderService extends Constants {
             cartService.deleteCartByCustomerId(customerId);
             List<ProductUpdateReqModel> productsToBeUpdated = generateProductUpdateReqObts(productDetails, cart.getCartItems());
             //url will be merchants/{merchantId}/products/{productId}
-//            String productUpdateUrl = productServiceUrl.concat("merchants");
-//            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(productUpdateUrl);
             String url = productServiceUrl.concat("merchants");
             int errorCounts = 0;
             for(ProductUpdateReqModel reqProd : productsToBeUpdated){
@@ -212,22 +214,20 @@ public class OrderService extends Constants {
         return  new ArrayList<>(productUpdateReqMap.values());
     }
 
-    private BigDecimal getRewardPointsOffsetForCustomer(String customerId){
+    private JsonNode getRewardPointsOffsetForCustomer(String customerId){
         //from profile service needs to hit path : customers/{customer-id}/rewards  a GET call
-//        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(profileServiceUrl);
         String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId).concat(SLASH).concat("rewards");
         log.debug("URL to get reward points and offset amount for customerId: {} is {}", customerId, url);
         try{
             Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.GET, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
                 log.error("Failed to get reward points and offset amount for customerId: {}", customerId);
-                return BigDecimal.ZERO;
             }
             JsonNode data = response.getData();
-            return data.get("rewardAmount").decimalValue();
+            return data;
         }catch(Exception ex){
             log.error("Exception occurred while getting reward points and offset amount for customerId: {}", customerId);
-            return BigDecimal.ZERO;
+            return null;
         }
     }
 
@@ -296,10 +296,6 @@ public class OrderService extends Constants {
     private Response getActiveOrdersByProfileId(String profileId, String profileIdKey){
         log.info("Fetching active orders for profileId: {}", profileId);
         Document query = new Document(profileIdKey, profileId);
-//        List<String> nonActiveStatus = new ArrayList<>();
-//        nonActiveStatus.add(OrderStatus.COMPLETED.toString());
-//        nonActiveStatus.add(OrderStatus.CANCELLED.toString());
-//        query.put("status", new Document("$nin", nonActiveStatus));
         log.info("Query to fetch only active orders : {} from orders coll", query);
         List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
         if(orders!=null && !orders.isEmpty()){
@@ -419,8 +415,9 @@ public class OrderService extends Constants {
                 mongoManager.insertDocument(orderDoc, orderDb, completedOrderColl);
                 mongoManager.deleteDocument(query, orderDb, orderColl);
 
-                updateMerchantEarnings(orderDoc);
-                updateCustomerRewardPoints(orderDoc);
+                BigDecimal orderPrice =  mapper.convertValue(orderDoc.get(TOTAL_PRICE), BigDecimal.class);
+                updateMerchantEarnings(orderId, orderDoc.get(MERCHANT_ID, String.class),  orderPrice);
+                updateCustomerRewardPoints(orderId, orderDoc.get(CUSTOMER_ID, String.class), orderPrice);
                 log.info("Order has been completed successfully for orderId: {} and kept in completed coll", orderId);
                 return utils.getSuccessResponse("Order has been completed successfully for orderId: ".concat(orderId).concat(" and kept in completed coll"), null);
             }catch(Exception ex){
@@ -434,6 +431,9 @@ public class OrderService extends Constants {
                 orderDoc.put(UPDATED_BY, MERCHANT);
                 mongoManager.insertDocument(orderDoc, orderDb, cancelledOrderColl);
                 mongoManager.deleteDocument(query, orderDb, orderColl);
+                //this will restore the reward points for user.
+                updateCustomerRewardPoints(orderId, orderDoc.get(CUSTOMER_ID, String.class),
+                        mapper.convertValue(orderDoc.get("customerRewardsPointsUsed"), BigDecimal.class));
                 log.info("Order has been cancelled successfully for orderId: {} and kept in cancelled coll", orderId);
                 return utils.getFailedResponse("Order has been cancelled successfully for orderId: ".concat(orderId).concat(" and kept in cancelled coll"));
             }catch(Exception ex){
@@ -515,44 +515,40 @@ public class OrderService extends Constants {
         }
     }
 
-    private void updateCustomerRewardPoints(Document orderDoc){
-        log.info("Updating customer reward points for orderId: {} and customerId : {}", orderDoc.get(ORDER_ID), orderDoc.get(CUSTOMER_ID));
-        BigDecimal orderPrice = orderDoc.get(TOTAL_PRICE, BigDecimal.class);
-        String customerId = orderDoc.get(CUSTOMER_ID, String.class);
+    private void updateCustomerRewardPoints(String orderId, String customerId, BigDecimal orderPrice){
+        log.info("Updating customer reward points for orderId: {} and customerId : {}", orderId, customerId);
         //url is /customers/{customer-id}/rewards/{order-price}
         String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId)
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
         log.debug("URL to update customer reward points is : {}", url);
         try{
-            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.PATCH, 1000, 30000);
+            Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
-                log.error("Failed to update customer reward points for orderId: {}", orderDoc.get(ORDER_ID));
+                log.error("Failed to update customer reward points for orderId: {}", orderId);
             }else{
                 log.info("Customer {} reward points updated successfully for orderId: {} with order amount {}",
-                        customerId, orderDoc.get(ORDER_ID), orderPrice);
+                        customerId, orderId, orderPrice);
             }
         }catch(Exception ex){
-            log.error("Exception occurred while updating customer reward points for orderId: {}", orderDoc.get(ORDER_ID));
+            log.error("Exception occurred while updating customer reward points for orderId: {}", orderId);
         }
     }
-    private void updateMerchantEarnings(Document orderDoc){
-        log.info("Updating merchant earnings for orderId : {} and merchantId {}", orderDoc.get(ORDER_ID), orderDoc.get(MERCHANT_ID));
-        BigDecimal orderPrice = orderDoc.get(TOTAL_PRICE, BigDecimal.class);
-        String merchantId = orderDoc.get(MERCHANT_ID, String.class);
+    private void updateMerchantEarnings(String orderId, String merchantId, BigDecimal orderPrice){
+        log.info("Updating merchant earnings for orderId : {} and merchantId {}", orderId, merchantId);
         //url is /merchants/{merchant-id}/rewards/{order-price}
         String url = profileServiceUrl.concat("merchants").concat(SLASH).concat(merchantId)
                 .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
         log.debug("URL to update merchant earnings is : {}", url);
         try{
-            Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
+            Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
             if(FAILURE.equalsIgnoreCase(response.getStatus())){
-                log.error("Failed to update merchant earnings for orderId: {}", orderDoc.get(ORDER_ID));
+                log.error("Failed to update merchant earnings for orderId: {}", orderId);
             }else{
                 log.info("Merchant {} earnings updated successfully for orderId: {} with order amount {}",
-                        merchantId, orderDoc.get(ORDER_ID), orderPrice);
+                        merchantId, orderId, orderPrice);
             }
         }catch(Exception ex){
-            log.error("Exception occurred while updating merchant earnings for orderId: {}", orderDoc.get(ORDER_ID));
+            log.error("Exception occurred while updating merchant earnings for orderId: {}", orderId);
         }
     }
     private boolean updateDeliveryStatusforOrder(Document orderDoc, boolean isCreateNewDelivery, String deliveryPartnerId, OrderStatus status){
@@ -569,9 +565,12 @@ public class OrderService extends Constants {
         HttpMethod method;
         JsonNode payload;
         if(isCreateNewDelivery){
-            //to create new delivery : deliveries/{orderId}/{deliveryPartnerId}/{customerId}
-            url = url.concat(SLASH).concat(orderId)
-                    .concat(SLASH).concat(deliveryPartnerId).concat(SLASH).concat(customerId);
+            //to create new delivery : deliveries/?orderId={orderId}&deliveryPersonId={deliveryPartnerId}&customerId={customerId}
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url.concat(SLASH));
+            uriBuilder.queryParam(ORDER_ID, orderId);
+            uriBuilder.queryParam("deliveryPersonId", deliveryPartnerId);
+            uriBuilder.queryParam(CUSTOMER_ID, customerId);
+            url=uriBuilder.toUriString();
             method = HttpMethod.POST;
             payload = null;
         }else{

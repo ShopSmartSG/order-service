@@ -15,7 +15,8 @@ public class CustomerResponseErrorHandler extends DefaultResponseErrorHandler {
             HttpStatus.UNAUTHORIZED,
             HttpStatus.FORBIDDEN,
             HttpStatus.INTERNAL_SERVER_ERROR,
-            HttpStatus.SERVICE_UNAVAILABLE
+            HttpStatus.SERVICE_UNAVAILABLE,
+            HttpStatus.CONFLICT
     );
 
     @Override

@@ -1,18 +1,9 @@
 package sg.edu.nus.iss.order_service.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import lombok.Data;
-import org.hibernate.annotations.UuidGenerator;
-import org.springframework.data.annotation.Transient;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 @Data
 public class Order {
@@ -36,5 +27,6 @@ public class Order {
     private String updatedBy;
     private boolean useRewards = false;
     private boolean useDelivery = false;
-    private BigDecimal rewardsAmount;
+    private BigDecimal rewardsAmountUsed;
+    private BigDecimal customerRewardsPointsUsed;
 }
