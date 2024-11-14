@@ -29,5 +29,3 @@ ENTRYPOINT ["java", "-jar", "order-app.jar"]
 # docker file and docker-compose port should be same
 # docker-compose down : shutdown the container
 # till we shutdown the postgres image , db remains intact
-#docker file has container port
-#app.properties has
