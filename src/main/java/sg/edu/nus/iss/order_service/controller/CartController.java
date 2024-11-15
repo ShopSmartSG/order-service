@@ -60,7 +60,7 @@ public class CartController extends Constants {
         Response result = cartService.addItemToCart(customerId, item, merchantId);
         if(result == null){
             log.info("Some error occurred while trying to add item added to cart for customer with ID {}", customerId);
-            response.put(MESSAGE, "Item added to cart successfully");
+            response.put(MESSAGE, "Some error occurred while trying to add item to cart");
             return ResponseEntity.internalServerError().body(response);
         } else if(SUCCESS.equalsIgnoreCase(result.getStatus())){
             log.info("Item added to cart for customer with ID {}", customerId);

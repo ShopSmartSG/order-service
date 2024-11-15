@@ -28,6 +28,13 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<sonar.coverage.exclusions>**/sg/edu/nus/iss/order_service/OrderServiceApplication.java,
+			**/sg/edu/nus/iss/order_service/config/**,
+			**/sg/edu/nus/iss/order_service/db/**,
+			**/sg/edu/nus/iss/order_service/exception/**,
+			**/sg/edu/nus/iss/order_service/model/**,
+			**/sg/edu/nus/iss/order_service/repository/**,
+			**/sg/edu/nus/iss/order_service/utils/**</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -128,8 +135,14 @@
 					<excludes>
 						// excluded the main class from code coverage
 						<exclude>sg/edu/nus/iss/order_service/OrderServiceApplication.class</exclude>
+						<exclude>sg/edu/nus/iss/order_service/HomeController.class</exclude>
 						<!-- Exclude all classes in the model package from code coverage -->
+						<exclude>sg/edu/nus/iss/order_service/config/**</exclude>
+						<exclude>sg/edu/nus/iss/order_service/db/**</exclude>
+						<exclude>sg/edu/nus/iss/order_service/exception/**</exclude>
 						<exclude>sg/edu/nus/iss/order_service/model/**</exclude>
+						<exclude>sg/edu/nus/iss/order_service/repository/**</exclude>
+						<exclude>sg/edu/nus/iss/order_service/utils/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>

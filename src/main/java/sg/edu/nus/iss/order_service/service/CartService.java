@@ -150,7 +150,7 @@ public class CartService extends Constants {
     }
 
     public Cart getCartByCustomerId(String customerId) {
-        log.info("Finding cart for customer with ID {}", customerId);
+        log.info("Getting cart for customer with ID {}", customerId);
         Document query = new Document(CUSTOMER_ID, customerId);
         Document cartDoc = mongoManager.findDocument(query, cartDb, cartColl);
         if(cartDoc!=null){
@@ -166,27 +166,24 @@ public class CartService extends Constants {
 
     public Response findCartByCustomerId(String customerId) {
         log.info("Finding cart for customer with ID {}", customerId);
-        Document query = new Document(CUSTOMER_ID, customerId);
-        Document cartDoc = mongoManager.findDocument(query, cartDb, cartColl);
-        if(cartDoc!=null){
-            log.info("Found cart for customer with ID {}", customerId);
-            Cart cart = mapper.convertValue(cartDoc, Cart.class);
-            log.debug("Number of items in cart is : {}", cart.getCartItems().size());
+        Cart cart = getCartByCustomerId(customerId);
+        if(cart!=null){
+            log.debug("Items count in cart is : {}", cart.getCartItems().size());
             return utils.getSuccessResponse("Cart found", mapper.convertValue(cart, JsonNode.class));
         }else{
-            log.info("Cart for customerID {} not found.", customerId);
+            log.info("Cart not found for customerID {}.", customerId);
             return utils.getFailedResponse("Cart not found");
         }
     }
 
     // Create a new Cart using CartRepository
-    public boolean createCart(Cart cart) {
+    private boolean createCart(Cart cart) {
         log.info("Creating cart for customer with ID {}, merchant id {}", cart.getCustomerId(), cart.getMerchantId());
-        Cart existingCart = getCartByCustomerId(cart.getCustomerId());
-        if(existingCart!=null){
-            log.info("Cart for customer with ID {} already exists", cart.getCustomerId());
-            return false;
-        }
+//        Cart existingCart = getCartByCustomerId(cart.getCustomerId());
+//        if(existingCart!=null){
+//            log.info("Cart for customer with ID {} already exists", cart.getCustomerId());
+//            return false;
+//        }
         Document cartDoc = mapper.convertValue(cart, Document.class);
         return mongoManager.insertDocument(cartDoc, cartDb, cartColl);
     }
@@ -206,19 +203,4 @@ public class CartService extends Constants {
             return utils.getFailedResponse("Failed to delete/empty cart");
         }
     }
-
-//    private Response utils.getFailedResponse(String message) {
-//        Response response = new Response();
-//        response.setStatus(FAILURE);
-//        response.setMessage(message);
-//        return response;
-//    }
-//
-//    private Response utils.getSuccessResponse(String message, JsonNode data) {
-//        Response response = new Response();
-//        response.setStatus(SUCCESS);
-//        response.setMessage(message);
-//        response.setData(data);
-//        return response;
-//    }
 }

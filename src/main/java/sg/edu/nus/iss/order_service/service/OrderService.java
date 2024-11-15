@@ -46,13 +46,13 @@ public class OrderService extends Constants {
     private String cancelledOrderColl;
 
     @Value("${product.service.url}")
-    private String productServiceUrl; //http://product-service:95/
+    private String productServiceUrl = "http://product-service:95/"; //http://product-service:95/
 
     @Value("${profile.service.url}")
-    private String profileServiceUrl; //http://profile-service:80/
+    private String profileServiceUrl = "http://profile-service:80/"; //http://profile-service:80/
 
     @Value("${delivery.service.url}")
-    private String deliveryServiceUrl; //http://delivery-service:92/
+    private String deliveryServiceUrl = "http://delivery-service:92/"; //http://delivery-service:92/
 
     @Autowired
     public OrderService(CartService cartService, MongoManager mongoManager, WSUtils wsUtils, Utils utils) {
@@ -145,6 +145,7 @@ public class OrderService extends Constants {
                 log.error("Failed to update stock for {} products out of {}, so deleting previously created order",
                         errorCounts, productsToBeUpdated.size());
                 deleteOrder(order.getOrderId());
+                return utils.getFailedResponse("Failed to create order for customer: ".concat(customerId));
             }
             return utils.getSuccessResponse("Order created successfully for customer: ".concat(customerId).concat(" with orderId: ").concat(order.getOrderId()), null);
         }else{
@@ -435,7 +436,7 @@ public class OrderService extends Constants {
                 updateCustomerRewardPoints(orderId, orderDoc.get(CUSTOMER_ID, String.class),
                         mapper.convertValue(orderDoc.get("customerRewardsPointsUsed"), BigDecimal.class));
                 log.info("Order has been cancelled successfully for orderId: {} and kept in cancelled coll", orderId);
-                return utils.getFailedResponse("Order has been cancelled successfully for orderId: ".concat(orderId).concat(" and kept in cancelled coll"));
+                return utils.getSuccessResponse("Order has been cancelled successfully for orderId: ".concat(orderId).concat(" and kept in cancelled coll"), null);
             }catch(Exception ex){
                 log.error("Exception occurred while marking order status for orderId: {} as cancelled", orderId);
                 return utils.getFailedResponse("Exception occurred while marking order status for orderId: ".concat(orderId).concat(" as cancelled "));
