@@ -143,6 +143,7 @@
 						<exclude>sg/edu/nus/iss/order_service/model/**</exclude>
 						<exclude>sg/edu/nus/iss/order_service/repository/**</exclude>
 						<exclude>sg/edu/nus/iss/order_service/utils/**</exclude>
+						<exclude>sg/edu/nus/iss/order_service/strategy/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>
