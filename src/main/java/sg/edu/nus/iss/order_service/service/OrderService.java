@@ -299,15 +299,12 @@ public class OrderService extends Constants {
                     orderTypeStrategy = cancelledOrderStrategy;
                     log.info("Selected order strategy: CANCELLED");
                     break;
-                case "ALL":
+                default:
                     orderTypeStrategy = allOrderStrategy;
                     log.info("Selected order strategy: ALL");
                     break;
-                default:
-                    return utils.getFailedResponse("Invalid order type: " + listType); // Return failure response for invalid listType
             }
 
-            // Validate profile type and format the ID accordingly
             String formattedId = utils.getProfileIdentifierFieldBasedOnRole(profileType);
             if (formattedId.isEmpty()) {
                 return utils.getFailedResponse("Invalid profile type: " + profileType); // Return failure response for invalid profileType
