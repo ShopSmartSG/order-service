@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.swagger.v3.core.util.Json;
-import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 import sg.edu.nus.iss.order_service.db.MongoManager;
-import sg.edu.nus.iss.order_service.exception.ResourceNotFoundException;
 import sg.edu.nus.iss.order_service.model.*;
 import sg.edu.nus.iss.order_service.strategy.context.OrderTypeStrategyContext;
 import sg.edu.nus.iss.order_service.strategy.context.ProfileTypeStrategyContext;
@@ -284,7 +282,6 @@ public class OrderService extends Constants {
     }
 
     public Response getOrdersListByProfileId(String listType, String profileType, String id) {
-        log.info("Fetching orders for profileType: {} with ID: {} and listType: {}", profileType, id, listType);
 
         try {
             // Select the appropriate order strategy based on listType
@@ -307,31 +304,24 @@ public class OrderService extends Constants {
                     log.info("Selected order strategy: ALL");
                     break;
                 default:
-                    log.error("Invalid order type: {}", listType);
                     return utils.getFailedResponse("Invalid order type: " + listType); // Return failure response for invalid listType
             }
 
             // Validate profile type and format the ID accordingly
             String formattedId = utils.getProfileIdentifierFieldBasedOnRole(profileType);
             if (formattedId.isEmpty()) {
-                log.error("Invalid profile type: {}", profileType);
                 return utils.getFailedResponse("Invalid profile type: " + profileType); // Return failure response for invalid profileType
             }
-
-            // Log the formatted ID
-            log.info("Formatted ID for profileType {}: {}", profileType, formattedId);
 
             // Fetch orders using the selected order strategy
             Response ordersData = orderTypeStrategy.getOrders(profileType, id); // Assuming this returns Response, not JsonNode
 
             // Check if no orders were found
             if (ordersData == null || ordersData.getData() == null || ordersData.getData().isEmpty()) {
-                log.warn("No orders found for profileType {} and ID {}", profileType, id);
                 return utils.getFailedResponse("No orders found for profileType " + profileType + " and ID " + id);
             }
 
             // Log success and return the successful response
-            log.info("Successfully retrieved {} orders for profileType {} and ID {}", ordersData.getData().size(), profileType, id);
             return utils.getSuccessResponse("Orders retrieved successfully", ordersData.getData());
 
         } catch (Exception e) {
