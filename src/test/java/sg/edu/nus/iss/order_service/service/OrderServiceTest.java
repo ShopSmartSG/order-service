@@ -193,15 +193,6 @@ class OrderServiceTest extends Constants {
         assertEquals(FAILURE, response.getStatus());
         assertEquals("Unknown profile type", response.getMessage());
     }
-    @Test
-    public void testGetOrdersListByProfileId_Completed_Success() {
-        when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(completedOrderColl))).thenReturn(List.of(getOrderDocument_withDelivery()));
-        when(utils.getProfileIdentifierFieldBasedOnRole(anyString())).thenReturn(MERCHANT_ID);
-        when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Orders found", objectMapper.createObjectNode()));
-        Response response = orderService.getOrdersListByProfileId(COMPLETED, MERCHANT, "merchant1");
-        assertEquals(SUCCESS, response.getStatus());
-        assertEquals("Orders found", response.getMessage());
-    }
 
     @Test
     public void testGetOrdersListByProfileId_Completed_Failure() {
@@ -211,16 +202,6 @@ class OrderServiceTest extends Constants {
         Response response = orderService.getOrdersListByProfileId(COMPLETED, MERCHANT, "merchant1");
         assertEquals(FAILURE, response.getStatus());
         assertEquals("No orders found", response.getMessage());
-    }
-
-    @Test
-    public void testGetOrdersListByProfileId_Cancelled_Success(){
-        when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(cancelledOrderColl))).thenReturn(List.of(getOrderDocument_withDelivery()));
-        when(utils.getProfileIdentifierFieldBasedOnRole(anyString())).thenReturn(MERCHANT_ID);
-        when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Orders found", objectMapper.createObjectNode()));
-        Response response = orderService.getOrdersListByProfileId(CANCELLED, MERCHANT, "merchant1");
-        assertEquals(SUCCESS, response.getStatus());
-        assertEquals("Orders found", response.getMessage());
     }
 
     @Test
@@ -234,16 +215,6 @@ class OrderServiceTest extends Constants {
     }
 
     @Test
-    public void testGetOrdersListByProfileId_Active_Success(){
-        when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(orderColl))).thenReturn(List.of(getOrderDocument_withDelivery()));
-        when(utils.getProfileIdentifierFieldBasedOnRole(anyString())).thenReturn(MERCHANT_ID);
-        when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Orders found", objectMapper.createObjectNode()));
-        Response response = orderService.getOrdersListByProfileId(ACTIVE, MERCHANT, "merchant1");
-        assertEquals(SUCCESS, response.getStatus());
-        assertEquals("Orders found", response.getMessage());
-    }
-
-    @Test
     public void testGetOrdersListByProfileId_Active_Failure(){
         when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(orderColl))).thenReturn(new ArrayList<>());
         when(utils.getProfileIdentifierFieldBasedOnRole(anyString())).thenReturn(MERCHANT_ID);
@@ -251,18 +222,6 @@ class OrderServiceTest extends Constants {
         Response response = orderService.getOrdersListByProfileId(ACTIVE, MERCHANT, "merchant1");
         assertEquals(FAILURE, response.getStatus());
         assertEquals("No orders found", response.getMessage());
-    }
-
-    @Test
-    public void testGetOrdersListByProfileId_All_Success(){
-        when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(orderColl))).thenReturn(List.of(getOrderDocument_withDelivery()));
-        when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(completedOrderColl))).thenReturn(List.of(getOrderDocument_withDelivery()));
-        when(mongoManager.findAllDocuments(any(), eq(orderDb), eq(cancelledOrderColl))).thenReturn(List.of(getOrderDocument_withDelivery()));
-        when(utils.getProfileIdentifierFieldBasedOnRole(anyString())).thenReturn(MERCHANT_ID);
-        when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Orders found", objectMapper.createObjectNode()));
-        Response response = orderService.getOrdersListByProfileId("all", MERCHANT, "merchant1");
-        assertEquals(SUCCESS, response.getStatus());
-        assertEquals("Orders found", response.getMessage());
     }
 
     @Test

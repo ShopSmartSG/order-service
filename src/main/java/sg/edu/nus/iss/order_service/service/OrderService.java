@@ -5,17 +5,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.swagger.v3.core.util.Json;
-import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 import sg.edu.nus.iss.order_service.db.MongoManager;
 import sg.edu.nus.iss.order_service.model.*;
+import sg.edu.nus.iss.order_service.strategy.context.OrderTypeStrategyContext;
+import sg.edu.nus.iss.order_service.strategy.context.ProfileTypeStrategyContext;
+import sg.edu.nus.iss.order_service.strategy.order.OrderTypeStrategy;
+import sg.edu.nus.iss.order_service.strategy.profile.ProfileTypeStrategy;
 import sg.edu.nus.iss.order_service.states.*;
 import sg.edu.nus.iss.order_service.utils.Constants;
 import sg.edu.nus.iss.order_service.utils.Utils;
@@ -33,7 +37,8 @@ public class OrderService extends Constants {
     private final MongoManager mongoManager;
     private final WSUtils wsUtils;
     private final Utils utils;
-
+    private final OrderTypeStrategyContext orderTypeStrategyContext;
+    private final ProfileTypeStrategyContext profileTypeStrategyContext;
     @Value("${"+ORDER_DB+"}")
     private String orderDb;
 
@@ -49,12 +54,50 @@ public class OrderService extends Constants {
     @Value("${product.service.url}")
     private String productServiceUrl = "http://product-service:95/"; //http://product-service:95/
 
+    private OrderTypeStrategy completedOrderStrategy;
+
+
+    private OrderTypeStrategy activeOrderStrategy;
+
+
+    private OrderTypeStrategy cancelledOrderStrategy;
+
+
+    private OrderTypeStrategy allOrderStrategy;
+
+
+    private ProfileTypeStrategy customerProfileStrategy;
+
+
+    private ProfileTypeStrategy merchantProfileStrategy;
+
+
+    private ProfileTypeStrategy deliveryPartnerProfileStrategy;
+
     @Autowired
-    public OrderService(CartService cartService, MongoManager mongoManager, WSUtils wsUtils, Utils utils) {
+    public OrderService(CartService cartService, MongoManager mongoManager, WSUtils wsUtils, Utils utils,
+                        OrderTypeStrategyContext orderTypeStrategyContext,
+                        ProfileTypeStrategyContext profileTypeStrategyContext,
+                        @Qualifier("COMPLETED") OrderTypeStrategy completedOrderStrategy,
+                        @Qualifier("ACTIVE") OrderTypeStrategy activeOrderStrategy,
+                        @Qualifier("CANCELLED") OrderTypeStrategy cancelledOrderStrategy,
+                        @Qualifier("ALL") OrderTypeStrategy allOrderStrategy,
+                        @Qualifier("customer") ProfileTypeStrategy customerProfileStrategy,
+                        @Qualifier("merchant") ProfileTypeStrategy merchantProfileStrategy,
+                        @Qualifier("deliveryPartner") ProfileTypeStrategy deliveryPartnerProfileStrategy) {
         this.cartService = cartService;
         this.mongoManager = mongoManager;
         this.wsUtils = wsUtils;
         this.utils = utils;
+        this.orderTypeStrategyContext = orderTypeStrategyContext;
+        this.profileTypeStrategyContext = profileTypeStrategyContext;
+        this.completedOrderStrategy = completedOrderStrategy;
+        this.activeOrderStrategy = activeOrderStrategy;
+        this.allOrderStrategy = allOrderStrategy;
+        this.cancelledOrderStrategy = cancelledOrderStrategy;
+        this.customerProfileStrategy = customerProfileStrategy;
+        this.merchantProfileStrategy = merchantProfileStrategy;
+        this.deliveryPartnerProfileStrategy = deliveryPartnerProfileStrategy;
     }
 
     public Response createOrderFromCart(String customerId, boolean useRewards, boolean useDelivery){
@@ -216,107 +259,50 @@ public class OrderService extends Constants {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Response getOrdersListByProfileId(String listType, String profileType, String id){
-        log.info("Fetching orders for profileType: {}, id: {}", profileType, id);
-        String profileIdentifierField = utils.getProfileIdentifierFieldBasedOnRole(profileType);
-        if(StringUtils.isEmpty(profileIdentifierField)){
-            log.error("Invalid profileType provided for fetching orders, profileType: {}", profileType);
-            return utils.getFailedResponse("Invalid profileType provided for fetching orders");
-        }
-        if(COMPLETED.equalsIgnoreCase(listType)){
-            log.info("Fetching completed orders for profileType: {}, id: {}", profileType, id);
-            return getCompletedOrdersByProfileId(id, profileIdentifierField);
-        }else if(CANCELLED.equalsIgnoreCase(listType)){
-            log.info("Fetching cancelled orders for profileType: {}, id: {}", profileType, id);
-            return getCancelledOrdersByProfileId(id, profileIdentifierField);
-        }else if(ACTIVE.equalsIgnoreCase(listType)){
-            log.info("Fetching active orders for profileType: {}, id: {}", profileType, id);
-            return getActiveOrdersByProfileId(id, profileIdentifierField);
-        }else{
-            log.info("Fetching all orders for profileType: {}, id: {}", profileType, id);
-            return getAllOrdersByProfileId(id, profileIdentifierField);
-        }
-    }
+    public Response getOrdersListByProfileId(String listType, String profileType, String id) {
 
-    private Response getCompletedOrdersByProfileId(String profileId, String profileIdKey){
-        log.info("Fetching completed orders for profileId: {}", profileId);
-        Document query = new Document(profileIdKey, profileId);
-        log.info("Query to fetch completed orders : {} from completedOrders coll", query);
-        List<Document> orders = mongoManager.findAllDocuments(query, orderDb, completedOrderColl);
-        if(orders!=null && !orders.isEmpty()){
-            log.info("Found completed orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
-            List<Order> orderList = mapper.convertValue(orders, List.class);
-            return utils.getSuccessResponse("Completed orders found for ".concat(profileIdKey)
-                    .concat(" :: ").concat(profileId),mapper.convertValue(orderList, ArrayNode.class));
-        }else{
-            log.info("No completed orders found for profileKey {}, profileId: {}", profileIdKey, profileId);
-            return utils.getFailedResponse("No completed orders found for profileKey ".concat(profileIdKey)
-                    .concat(", profileId: ").concat(profileId));
-        }
-    }
+        try {
+            // Select the appropriate order strategy based on listType
+            OrderTypeStrategy orderTypeStrategy;
+            switch (listType.toUpperCase()) {
+                case "COMPLETED":
+                    orderTypeStrategy = completedOrderStrategy;
+                    log.info("Selected order strategy: COMPLETED");
+                    break;
+                case "ACTIVE":
+                    orderTypeStrategy = activeOrderStrategy;
+                    log.info("Selected order strategy: ACTIVE");
+                    break;
+                case "CANCELLED":
+                    orderTypeStrategy = cancelledOrderStrategy;
+                    log.info("Selected order strategy: CANCELLED");
+                    break;
+                default:
+                    orderTypeStrategy = allOrderStrategy;
+                    log.info("Selected order strategy: ALL");
+                    break;
+            }
 
-    private Response getCancelledOrdersByProfileId(String profileId, String profileIdKey){
-        log.info("Fetching cancelled orders for profileId: {}", profileId);
-        Document query = new Document(profileIdKey, profileId);
-        log.info("Query to fetch cancelled orders : {} from cancelledOrders coll", query);
-        List<Document> orders = mongoManager.findAllDocuments(query, orderDb, cancelledOrderColl);
-        if(orders!=null && !orders.isEmpty()){
-            log.info("Found cancelled orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
-            List<Order> orderList = mapper.convertValue(orders, List.class);
-            return utils.getSuccessResponse("Cancelled orders found for ".concat(profileIdKey)
-                    .concat(" :: ").concat(profileId),mapper.convertValue(orderList, ArrayNode.class));
-        }else{
-            log.info("No cancelled orders found for profileKey {}, profileId: {}", profileIdKey, profileId);
-            return utils.getFailedResponse("No cancelled orders found for profileKey ".concat(profileIdKey)
-                    .concat(", profileId: ").concat(profileId));
-        }
-    }
+            String formattedId = utils.getProfileIdentifierFieldBasedOnRole(profileType);
+            if (formattedId.isEmpty()) {
+                return utils.getFailedResponse("Invalid profile type: " + profileType); // Return failure response for invalid profileType
+            }
 
-    private Response getActiveOrdersByProfileId(String profileId, String profileIdKey){
-        log.info("Fetching active orders for profileId: {}", profileId);
-        Document query = new Document(profileIdKey, profileId);
-        log.info("Query to fetch only active orders : {} from orders coll", query);
-        List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
-        if(orders!=null && !orders.isEmpty()){
-            log.info("Found active orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
-            List<Order> orderList = mapper.convertValue(orders, List.class);
-            return utils.getSuccessResponse("Active orders found for ".concat(profileIdKey)
-                    .concat(" :: ").concat(profileId),mapper.convertValue(orderList, ArrayNode.class));
-        }else{
-            log.info("No active orders found for profileKey {}, profileId: {}", profileIdKey, profileId);
-            return utils.getFailedResponse("No active orders found for profileKey ".concat(profileIdKey)
-                    .concat(", profileId: ").concat(profileId));
-        }
-    }
+            // Fetch orders using the selected order strategy
+            Response ordersData = orderTypeStrategy.getOrders(profileType, id); // Assuming this returns Response, not JsonNode
 
-    private Response getAllOrdersByProfileId(String profileId, String profileIdKey){
-        log.info("Fetching orders for profileId: {}", profileId);
-        Document query = new Document(profileIdKey, profileId);
-        List<Document> totalOrders = new ArrayList<>();
-        List<Document> orders = mongoManager.findAllDocuments(query, orderDb, orderColl);
-        List<Document> completedOrders = mongoManager.findAllDocuments(query, orderDb, completedOrderColl);
-        List<Document> cancelledOrders = mongoManager.findAllDocuments(query, orderDb, cancelledOrderColl);
-        if(orders!=null && !orders.isEmpty()){
-            log.info("Found active orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, orders.size());
-            totalOrders.addAll(orders);
-        }
-        if(completedOrders!=null && !completedOrders.isEmpty()){
-            log.info("Found completed orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, completedOrders.size());
-            totalOrders.addAll(completedOrders);
-        }
-        if(cancelledOrders!=null && !cancelledOrders.isEmpty()){
-            log.info("Found cancelled orders for profileKey {}, profileId: {}, count {}", profileIdKey, profileId, cancelledOrders.size());
-            totalOrders.addAll(cancelledOrders);
-        }
-        if(totalOrders!=null && !totalOrders.isEmpty()){
-            log.info("Found total orders for profileKey {}, profileId: {}, as count {}", profileIdKey, profileId, totalOrders.size());
-            List<Order> orderList = mapper.convertValue(totalOrders, List.class);
-            return utils.getSuccessResponse("Total orders found for ".concat(profileIdKey)
-                    .concat(" :: ").concat(profileId),mapper.convertValue(orderList, ArrayNode.class));
-        }else{
-            log.info("No orders found for profileKey {}, profileId: {}", profileIdKey, profileId);
-            return utils.getFailedResponse("No orders found for profileKey ".concat(profileIdKey)
-                    .concat(", profileId: ").concat(profileId));
+            // Check if no orders were found
+            if (ordersData == null || ordersData.getData() == null || ordersData.getData().isEmpty()) {
+                return utils.getFailedResponse("No orders found for profileType " + profileType + " and ID " + id);
+            }
+
+            // Log success and return the successful response
+            return utils.getSuccessResponse("Orders retrieved successfully", ordersData.getData());
+
+        } catch (Exception e) {
+            // Handle exceptions gracefully
+            log.error("An error occurred while retrieving orders for profileType {} and ID {}: {}", profileType, id, e.getMessage(), e);
+            return utils.getFailedResponse("An error occurred while retrieving orders: " + e.getMessage()); // Return failure response on error
         }
     }
 
