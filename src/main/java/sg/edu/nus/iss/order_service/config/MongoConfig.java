@@ -13,9 +13,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import sg.edu.nus.iss.order_service.utils.Constants;
 
 //@Configuration
+@EnableMongoRepositories(basePackages = "sg.edu.nus.iss.order_service.repository")
 public class MongoConfig extends Constants {
     private static final Logger log = LoggerFactory.getLogger(MongoConfig.class);
 
