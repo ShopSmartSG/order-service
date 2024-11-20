@@ -34,6 +34,7 @@
 			**/sg/edu/nus/iss/order_service/exception/**,
 			**/sg/edu/nus/iss/order_service/model/**,
 			**/sg/edu/nus/iss/order_service/repository/**,
+			**/sg/edu/nus/iss/order_service/states/OrderState.java,
 			**/sg/edu/nus/iss/order_service/utils/**,
 			**/sg/edu/nus/iss/order_service/strategy/**</sonar.coverage.exclusions>
 	</properties>
@@ -143,6 +144,7 @@
 						<exclude>sg/edu/nus/iss/order_service/exception/**</exclude>
 						<exclude>sg/edu/nus/iss/order_service/model/**</exclude>
 						<exclude>sg/edu/nus/iss/order_service/repository/**</exclude>
+						<exclude>sg/edu/nus/iss/order_service/states/OrderState.class</exclude>
 						<exclude>sg/edu/nus/iss/order_service/utils/**</exclude>
 						<exclude>sg/edu/nus/iss/order_service/strategy/**</exclude>
 					</excludes>

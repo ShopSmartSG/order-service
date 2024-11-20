@@ -338,6 +338,7 @@ class OrderServiceTest extends Constants {
         when(mongoManager.deleteDocument(any(), eq(orderDb), eq(orderColl))).thenReturn(true);
         when(wsUtils.makeWSCallString(eq(profileMerchantUpdate), any(), any(), any(), anyLong(), anyLong())).thenReturn(successResp);
         when(wsUtils.makeWSCallString(eq(profileCustomerUpdate), any(), any(), any(), anyLong(), anyLong())).thenReturn(successResp);
+        when(utils.updateDeliveryStatusforOrder(any(), anyBoolean(), anyString(), any())).thenReturn(true);
         when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Order status updated to completed", objectMapper.createObjectNode()));
         Response response = orderService.updateOrderStatus("order1", OrderStatus.COMPLETED, null);
         assertEquals(SUCCESS, response.getStatus());
@@ -365,6 +366,7 @@ class OrderServiceTest extends Constants {
         when(mongoManager.findDocument(any(), eq(orderDb), eq(orderColl))).thenReturn(getOrderDocument_withDelivery());
         when(wsUtils.makeWSCallObject(eq(deliveryUpdateUrl), any(), any(), any(), anyLong(), anyLong())).thenReturn(successResp);
         when(mongoManager.findOneAndUpdate(any(), any(), eq(orderDb), eq(orderColl), anyBoolean(), anyBoolean())).thenReturn(getOrderDocument_withDelivery());
+        when(utils.updateDeliveryStatusforOrder(any(), anyBoolean(), anyString(), any())).thenReturn(true);
         when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Order status updated", objectMapper.createObjectNode()));
         Response response = orderService.updateOrderStatus("order1", OrderStatus.DELIVERY_PICKED_UP, null);
         assertEquals(SUCCESS, response.getStatus());
@@ -406,6 +408,7 @@ class OrderServiceTest extends Constants {
         when(mongoManager.findDocument(any(), eq(orderDb), eq(orderColl))).thenReturn(getOrderDocument_withDelivery());
         when(wsUtils.makeWSCallObject(eq(deliveryUpdateUrl), any(), any(), any(), anyLong(), anyLong())).thenReturn(delUpdate);
         when(mongoManager.findOneAndUpdate(any(), any(), eq(orderDb), eq(orderColl), anyBoolean(), anyBoolean())).thenReturn(getOrderDocument_withDelivery());
+        when(utils.updateDeliveryStatusforOrder(any(), anyBoolean(), anyString(), any())).thenReturn(true);
         when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Order status updated", objectMapper.createObjectNode()));
 
         ObjectNode payload = objectMapper.createObjectNode();

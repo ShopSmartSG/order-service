@@ -344,7 +344,6 @@ public class OrderService extends Constants {
             log.error("No order found for orderId: {}", orderId);
             return utils.getFailedResponse("No order found for orderId: ".concat(orderId));
         }
-
         try {
             OrderContext context = new OrderContext();
             context.setOrderDoc(orderDoc);

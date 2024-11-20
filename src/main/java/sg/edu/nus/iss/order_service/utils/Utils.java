@@ -26,6 +26,7 @@ import java.util.List;
 public class Utils extends Constants{
     private static final Logger log = LoggerFactory.getLogger(Utils.class);
     private final ObjectMapper mapper = Json.mapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${profile.service.url}")
     private String profileServiceUrl = "http://profile-service:80/";
@@ -40,7 +41,6 @@ public class Utils extends Constants{
         this.wsUtils = wsUtils;
     }
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     public Response getFailedResponse(String message) {
         Response response = new Response();
         response.setStatus(FAILURE);
