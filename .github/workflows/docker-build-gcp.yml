@@ -1,0 +1,105 @@
+name: Build and Push to GCP Artifact Registry
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  push-to-gcp:
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_ARTIFACT_REGISTRY: ${{ secrets.GCP_ARTIFACT_REGISTRY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_CRED }}
+          
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+
+      - name: Verify Java Installation
+        run: java -version
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-utils bc
+      - name: Build and run tests with JaCoCo
+        run: |
+          mvn clean test
+          mvn jacoco:report
+
+      - name: Check JaCoCo Coverage Threshold
+        run: |
+          #!/bin/bash
+
+          # Debug: Print the content of the JaCoCo report
+          echo "Content of JaCoCo report:"
+          cat target/site/jacoco/jacoco.xml
+
+          # Extract the total lines covered
+          TOTAL_LINES_COVERED=$(xmllint --xpath "(//counter[@type='LINE']/@covered)[1]" target/site/jacoco/jacoco.xml | cut -d'"' -f2)
+          echo "Total lines covered: $TOTAL_LINES_COVERED"
+
+          # Extract the total lines
+          TOTAL_LINES=$(xmllint --xpath "(//counter[@type='LINE']/@missed)[1]" target/site/jacoco/jacoco.xml | cut -d'"' -f2)
+          echo "Total lines: $TOTAL_LINES"
+
+          # Calculate coverage percentage
+          if [[ $TOTAL_LINES_COVERED =~ ^[0-9]+$ ]] && [[ $TOTAL_LINES =~ ^[0-9]+$ ]]; then
+              COVERAGE_PERCENTAGE=$(echo "scale=2; ($TOTAL_LINES_COVERED / ($TOTAL_LINES + $TOTAL_LINES_COVERED)) * 100" | bc)
+              echo "Calculated Coverage Percentage: $COVERAGE_PERCENTAGE%"
+          else
+              echo "Invalid coverage or total line count extracted."
+              exit 1
+          fi
+
+          if (( $(echo "$COVERAGE_PERCENTAGE < 80" | bc -l) )); then
+              echo "Code coverage is below 80%, build failed."
+              exit 1
+          fi
+
+          echo "Code coverage check passed!"
+          COVERAGE=$(grep -oPm1 "(?<=<counter type=\"LINE\" missed=\")\d+" target/site/jacoco/jacoco.xml)
+          if [ "$COVERAGE" -lt "80" ]; then
+            echo "Code coverage is below 80%, build failed."
+            exit 1
+          fi
+        shell: bash
+
+      - name: Build, Test, and Analyze with Maven
+        run: |
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=ShopSmartSG_order-service \
+            -Dsonar.organization=shopsmartsg \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: Configure Docker for Google Artifact Registry
+        run: |
+          gcloud auth configure-docker $GCP_REGION-docker.pkg.dev
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/order-service:latest .
+
+      - name: Push Docker Image to Artifact Registry
+        run: |
+          docker push $GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/order-service:latest
