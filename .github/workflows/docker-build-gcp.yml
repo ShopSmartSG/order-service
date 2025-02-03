@@ -95,7 +95,7 @@ jobs:
 
       - name: Configure Docker for Google Artifact Registry
         run: |
-          gcloud auth configure-docker $GCP_REGION-docker.pkg.dev
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
 
       - name: Build Docker Image
         run: |
