@@ -1,4 +1,4 @@
-name: Build, Test, SAST, and Push Docker Image
+name: Build, Test, SAST, and Push Docker Image to AWS ECR
 
 on:
   push:
