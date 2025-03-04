@@ -1,36 +1,30 @@
-name: Build, Test, SAST, and Push Docker Image
+name: Build and Push to GCP Artifact Registry
 
 on:
   push:
     branches:
-      - feature/shopsmart-72
+      - feature/gcp_image
   pull_request:
     branches:
       - main
-  workflow_dispatch: # allows manual triggering
+  workflow_dispatch:
 
 jobs:
-  build:
+  push-to-gcp:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}  # Ensure that the region is being set
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      ECR_REPO_URI: ${{ secrets.ECR_REPO_URI }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_CRED }}
+          
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
@@ -87,16 +81,15 @@ jobs:
             exit 1
           fi
         shell: bash
-      - name: Debug AWS Credentials
-        run: |
-          echo "AWS_REGION=${{ secrets.AWS_REGION }}"
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-          echo "ECR_REPO_URI=${{ secrets.ECR_REPO_URI }}"
 
       - name: Build, Test, and Analyze with Maven
         run: |
-          mvn clean verify sonar:sonar \
+          mvn clean verify \
+          -Ddependency-check.skip=false \
+          -DnvdApiDelay=5000 \
+          -Dconnection.timeout=60000 \
+          -Dread.timeout=60000 \
+          sonar:sonar \
             -Dsonar.projectKey=ShopSmartSG_order-service \
             -Dsonar.organization=shopsmartsg \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -105,14 +98,16 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-      - name: Log in to Amazon ECR Public
-        run: |
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l0d0i0v3
 
-      - name: Build Docker image
+      - name: Configure Docker for Google Artifact Registry
         run: |
-          docker build -t shopsmartsg/order-service .
-          docker tag shopsmartsg/order-service:latest ${{ secrets.ECR_REPO_URI }}:latest
-      - name: Push Docker image to ECR
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build Docker Image
         run: |
-          docker push ${{ secrets.ECR_REPO_URI }}:latest
+          docker build -t order-service .
+          docker tag order-service:latest ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/order-service/order-service:latest
+
+      - name: Push Docker Image to Artifact Registry
+        run: |
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/order-service/order-service:latest
