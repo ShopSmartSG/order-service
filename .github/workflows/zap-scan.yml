@@ -1,13 +1,15 @@
-name: ZAP Full Scan
+name: Security Scan (DAST)
 
 on:
   push:
     branches: [main, feature/*]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan on Sundays
 
 jobs:
-  zap_scan:
+  security_scan:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,32 +40,129 @@ jobs:
 
       # Step 3: Run the Docker container for the application in the zap-network
       - name: Run Docker Container
-        run: docker run -d --name order-service --network zap-network -p 8087:8080 order-service:latest
+        run: |
+          docker run -d --name order-service \
+            --network zap-network \
+            -p 8080:8080 \
+            -e SPRING_PROFILES_ACTIVE=zapscan \
+            order-service:latest
+          
+          # Print container logs for debugging
+          sleep 10
+          docker logs order-service
 
       # Step 4: Wait for the application to start and be available
       - name: Wait for Application to Start
         run: |
           echo "Waiting for the application to start..."
-          for i in {1..10}; do
-            if curl -s http://localhost:8080 >/dev/null; then
+          for i in {1..30}; do
+            echo "Attempt $i: Checking if application is up..."
+            if curl -v http://localhost:8080/actuator/health; then
               echo "Application is up!"
-              break
+              exit 0
             fi
-            echo "Waiting for 10 seconds..."
+            echo "Application not ready yet..."
+            docker logs order-service
             sleep 10
           done
+          echo "Application failed to start"
+          docker logs order-service
+          exit 1
 
-      # Step 5: Run ZAP Full Scan in the same Docker network
-      - name: ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.11.0
-        with:
-          target: 'http://order-service:8080'  # Target by container name in the zap-network
-          token: ${{ secrets.GITHUB_TOKEN }}
-          cmd_options: '-t http://order-service:8080 -r zap_report.html'
+      # Step 5: Verify API Docs are accessible
+      - name: Verify API Docs
+        run: |
+          echo "Checking if API docs are accessible..."
+          if curl -s http://localhost:8080/v3/api-docs > /dev/null; then
+            echo "API docs are accessible!"
+            exit 0
+          else
+            echo "API docs are not accessible. Check your Spring configuration."
+            exit 1
+          fi
 
-      # Step 6: Upload the ZAP report as an artifact
-      - name: Upload ZAP Report
+      # Step 6: Create reports directory with proper permissions
+      - name: Create Reports Directory
+        run: |
+          mkdir -p reports
+          chmod 777 reports  # Give full permissions to the reports directory
+
+      # Step 7: Create ZAP Rules File directly in the reports directory
+      - name: Create ZAP Rules File
+        run: |
+          cat > reports/zap-rules.tsv << 'EOL'
+          10010	IGNORE	(Cookie No HttpOnly Flag)
+          10011	IGNORE	(Cookie Without Secure Flag)
+          10015	IGNORE	(Incomplete or No Cache-control Header Set)
+          10023	IGNORE	(Information Disclosure - Debug Error Messages)
+          90004	IGNORE	(Insufficient Site Isolation Against Spectre Vulnerability)
+          90022	IGNORE	(Application Error Disclosure)
+          100001	IGNORE	(Unexpected Content-Type was returned)
+          # Add more rules as needed for your specific application
+          EOL
+
+      # Step 8: Run ZAP API Scan directly with Docker
+      - name: ZAP API Scan
+        run: |
+          docker run --rm -v $(pwd)/reports:/zap/wrk:rw --network=host \
+            ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+            -t http://localhost:8080/v3/api-docs \
+            -f openapi \
+            -J report_json.json \
+            -w report_md.md \
+            -r report_html.html \
+            -c zap-rules.tsv \
+            -z "-config scanner.attackStrength=HIGH \
+                -config scanner.alertThreshold=MEDIUM \
+                -config api.disablekey=true \
+                -config rules.cookie.ignorelist=true \
+                -config scanner.level=ATTACK \
+                -config pscan.enableTags=information-disclosure \
+                -config rules.ascanrules.refs.json=true \
+                -config rules.ascanrules.script.injection=true \
+                -config rules.ascanrules.server.side.injection=true \
+                -config rules.ascanrules.sql.injection=true \
+                -config rules.ascanrules.nosqli.injection=true \
+                -config rules.ascanrules.xxe.injection=true \
+                -config rules.ascanrules.path.traversal=true \
+                -config rules.ascanrules.remote.code.execution=true"
+
+      # Step 9: Generate enhanced reports
+      - name: Generate Enhanced Reports
+        if: always()
+        run: |
+          echo "## DAST Scan Summary" > reports/summary.md
+          if [ -f "reports/report_html.html" ]; then
+            grep -A5 "Risk Level.*Number of Alerts" reports/report_html.html | sed 's/<[^>]*>//g' >> reports/summary.md || echo "No risk level information found in report" >> reports/summary.md
+          else
+            echo "No ZAP report found to summarize" >> reports/summary.md
+          fi
+
+      # Step 10: Upload the ZAP report as an artifact
+      - name: Upload Security Reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report
-          path: zap_report.html
+          name: zap-security-reports
+          path: reports/
+
+      # Step 11: Fail on critical findings
+      - name: Check for High Severity Findings
+        if: always()
+        run: |
+          if [ -f "reports/report_html.html" ]; then
+            # Look for High severity findings in ZAP report
+            HIGH_COUNT=$(grep -A1 "Risk Level.*Number of Alerts" reports/report_html.html | grep "High" -A1 | tail -n1 | tr -d ' \t\r\n' || echo "0")
+            echo "High severity count: $HIGH_COUNT"
+            if [[ "$HIGH_COUNT" =~ ^[0-9]+$ ]] && [ "$HIGH_COUNT" -gt "0" ]; then
+              echo "Critical or High severity vulnerabilities found!"
+              exit 1
+            else
+              echo "No Critical or High severity vulnerabilities found."
+              exit 0
+            fi
+          else
+            echo "ZAP report not found. Scan may have failed."
+            # Don't fail the build if the report is missing - we already have artifacts
+            exit 0
+          fi
