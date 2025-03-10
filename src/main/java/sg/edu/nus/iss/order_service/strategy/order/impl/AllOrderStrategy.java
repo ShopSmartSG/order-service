@@ -55,7 +55,7 @@ public class AllOrderStrategy extends Constants implements OrderTypeStrategy {
             return utils.getFailedResponse("Invalid profile type: " + profileType);
         }
 
-        query.append("status", ALL_STATUS); // Filter for all orders
+//        query.append("status", ALL_STATUS); // Filter for all orders
         logger.debug("Constructed query: {}", query.toJson());
 
         // Query MongoDB for matching documents across all collections
