@@ -172,13 +172,13 @@ public class Utils extends Constants{
         JsonNode payload;
         if(isCreateNewDelivery){
             //to create new delivery : deliveries/?orderId={orderId}&deliveryPersonId={deliveryPartnerId}&customerId={customerId}
-            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url.concat(SLASH));
-            uriBuilder.queryParam(ORDER_ID, orderId);
-            uriBuilder.queryParam("deliveryPersonId", deliveryPartnerId);
-            uriBuilder.queryParam(CUSTOMER_ID, customerId);
-            url=uriBuilder.toUriString();
+//            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url.concat(SLASH));
+//            uriBuilder.queryParam(ORDER_ID, orderId);
+//            uriBuilder.queryParam("deliveryPersonId", deliveryPartnerId);
+//            uriBuilder.queryParam(CUSTOMER_ID, customerId);
+//            url=uriBuilder.toUriString();
             method = HttpMethod.POST;
-            payload = null;
+            payload = mapper.convertValue(reqModel, JsonNode.class);
         }else{
             //to update delivery status : deliveries/status
             url = url.concat(SLASH).concat("status");
