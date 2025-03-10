@@ -87,7 +87,12 @@ public class Utils extends Constants{
 
     public JsonNode getRewardPointsOffsetForCustomer(String customerId){
         //from profile service needs to hit path : customers/{customer-id}/rewards  a GET call
-        String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId).concat(SLASH).concat("rewards");
+        //this url is changed now where we need to provide userId in request param now and not as path variable.
+//        String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId).concat(SLASH).concat("rewards");
+        String url = profileServiceUrl.concat("customers").concat(SLASH).concat("rewards");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+        uriBuilder.queryParam("user-id", customerId);
+        url = uriBuilder.toUriString();
         log.debug("URL to get reward points and offset amount for customerId: {} is {}", customerId, url);
         try{
             Response response = wsUtils.makeWSCallObject(url, null, new HashMap<>(), HttpMethod.GET, 1000, 30000);
@@ -105,8 +110,14 @@ public class Utils extends Constants{
     public void updateCustomerRewardPoints(String orderId, String customerId, BigDecimal orderPrice){
         log.info("Updating customer reward points for orderId: {} and customerId : {}", orderId, customerId);
         //url is /customers/{customer-id}/rewards/{order-price}
-        String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId)
-                .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        //this url is changed now where we need to provide userId in request param now and not as path variable.
+//        String url = profileServiceUrl.concat("customers").concat(SLASH).concat(customerId)
+//                .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        String url = profileServiceUrl.concat("customers").concat(SLASH)
+                .concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+        uriBuilder.queryParam("user-id", customerId);
+        url = uriBuilder.toUriString();
         log.debug("URL to update customer reward points is : {}", url);
         try{
             Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);
@@ -124,8 +135,14 @@ public class Utils extends Constants{
     public void updateMerchantEarnings(String orderId, String merchantId, BigDecimal orderPrice){
         log.info("Updating merchant earnings for orderId : {} and merchantId {}", orderId, merchantId);
         //url is /merchants/{merchant-id}/rewards/{order-price}
-        String url = profileServiceUrl.concat("merchants").concat(SLASH).concat(merchantId)
-                .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        //this url is changed now where we need to provide userId in request param now and not as path variable.
+//        String url = profileServiceUrl.concat("merchants").concat(SLASH).concat(merchantId)
+//                .concat(SLASH).concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        String url = profileServiceUrl.concat("merchants").concat(SLASH)
+                .concat("rewards").concat(SLASH).concat(orderPrice.toString());
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+        uriBuilder.queryParam("user-id", merchantId);
+        url = uriBuilder.toUriString();
         log.debug("URL to update merchant earnings is : {}", url);
         try{
             Response response = wsUtils.makeWSCallString(url, null, new HashMap<>(), HttpMethod.PUT, 1000, 30000);

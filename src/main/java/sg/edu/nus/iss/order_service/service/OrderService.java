@@ -161,8 +161,13 @@ public class OrderService extends Constants {
             int errorCounts = 0;
             for(ProductUpdateReqModel reqProd : productsToBeUpdated){
                 log.info("Updating stock for productId: {}", reqProd.getProductId());
-                String reqUrl = url.concat(SLASH).concat(reqProd.getMerchantId().toString()).concat(SLASH)
-                        .concat("products").concat(SLASH).concat(reqProd.getProductId().toString());
+                //this url has now changed where merchant id is now needed as request params.
+//                String reqUrl = url.concat(SLASH).concat(reqProd.getMerchantId().toString()).concat(SLASH)
+//                        .concat("products").concat(SLASH).concat(reqProd.getProductId().toString());
+                String reqUrl = url.concat(SLASH).concat("products").concat(SLASH).concat(reqProd.getProductId().toString());
+                UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(reqUrl);
+                uriBuilder.queryParam("user-id", reqProd.getMerchantId().toString());
+                reqUrl = uriBuilder.toUriString();
                 JsonNode payload = mapper.convertValue(reqProd, JsonNode.class);
                 try{
                     Response response = wsUtils.makeWSCallObject(reqUrl, payload, new HashMap<>(), HttpMethod.PUT, 1000, 30000);

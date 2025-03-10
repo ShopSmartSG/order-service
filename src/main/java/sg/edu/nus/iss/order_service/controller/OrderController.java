@@ -6,22 +6,17 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.v3.core.util.Json;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import sg.edu.nus.iss.order_service.exception.ResourceNotFoundException;
-import sg.edu.nus.iss.order_service.model.Order;
 import sg.edu.nus.iss.order_service.model.OrderStatus;
 import sg.edu.nus.iss.order_service.model.Response;
 import sg.edu.nus.iss.order_service.service.OrderService;
 import sg.edu.nus.iss.order_service.utils.Constants;
 import sg.edu.nus.iss.order_service.utils.Utils;
-
-import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/orders")
@@ -39,9 +34,9 @@ public class OrderController extends Constants {
         this.utils = utils;
     }
 
-    @PutMapping("/{customerId}")
+    @PutMapping("/")
     @Operation(summary = "Create order from cart for customer")
-    public ResponseEntity<JsonNode> createOrderFromCart(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> createOrderFromCart(@RequestParam("user-id") String customerId) {
         log.info("Creating order from cart for customer with ID {}", customerId);
         Response createResp = orderService.createOrderFromCart(customerId, false, false);
         if(createResp==null){
@@ -56,9 +51,9 @@ public class OrderController extends Constants {
         }
     }
 
-    @PutMapping("/{customer-id}/rewards/{use-rewards}/delivery/{use-delivery}")
+    @PutMapping("/rewards/{use-rewards}/delivery/{use-delivery}")
     @Operation(summary = "Create order from cart for customer")
-    public ResponseEntity<JsonNode> createOrderFromCartV2(@PathVariable(name = "customer-id") String customerId,
+    public ResponseEntity<JsonNode> createOrderFromCartV2(@RequestParam("user-id") String customerId,
                                                           @PathVariable(name = "use-rewards") boolean useRewards,
                                                           @PathVariable(name = "use-delivery") boolean useDelivery) {
         log.info("V2 :: Creating order from cart for customer with ID {}, if delivery is needed or not {} and if reward points are needed or not {}", customerId, useDelivery, useRewards);
@@ -92,10 +87,11 @@ public class OrderController extends Constants {
         }
     }
 
-    @GetMapping("/{listType}/profiles/{profile-type}/id/{profile-id}")
+    //here assumption is that this api will be called by the session profile only and hence that profile id will be needed
+    @GetMapping("/{listType}/profiles/{profile-type}/id")
     @Operation(summary = "Retrieve orders list for a profile type based on listing type")
     public ResponseEntity<JsonNode> getOrdersListByProfileId(@PathVariable String listType, @PathVariable("profile-type") String profileType,
-                                                             @PathVariable("profile-id") String id) {
+                                                             @RequestParam("user-id") String id) {
         log.info("Retrieving {} orders for profileType {} with ID {}", listType, profileType, id);
         Response ordersListResp = orderService.getOrdersListByProfileId(listType,profileType, id);
         if (ordersListResp == null) {
