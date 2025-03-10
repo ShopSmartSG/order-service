@@ -9,17 +9,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import sg.edu.nus.iss.order_service.exception.ResourceNotFoundException;
-import sg.edu.nus.iss.order_service.model.Cart;
 import sg.edu.nus.iss.order_service.model.Item;
 import sg.edu.nus.iss.order_service.model.Response;
 import sg.edu.nus.iss.order_service.service.CartService;
 import sg.edu.nus.iss.order_service.utils.Constants;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/carts")
@@ -35,9 +31,9 @@ public class CartController extends Constants {
         this.cartService = cartService;
     }
 
-    @GetMapping("/{customerId}")
+    @GetMapping("/")
     @Operation(summary = "Retrieve cart for customer")
-    public ResponseEntity<JsonNode> getCartByCustomerId(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> getCartByCustomerId(@RequestParam("user-id") String customerId) {
         log.info("Retrieving cart for customer with ID {}", customerId);
         Response response = cartService.findCartByCustomerId(customerId);
         if(response==null){
@@ -52,9 +48,9 @@ public class CartController extends Constants {
         }
     }
 
-    @PutMapping("/add/{customerId}/merchant/{merchantId}")
+    @PutMapping("/add-item/merchant/{merchantId}")
     @Operation(summary = "Add item to cart")
-    public ResponseEntity<JsonNode> addItemToCart(@PathVariable String customerId, @RequestBody Item item, @PathVariable String merchantId) {
+    public ResponseEntity<JsonNode> addItemToCart(@RequestParam("user-id") String customerId, @RequestBody Item item, @PathVariable String merchantId) {
         log.info("Adding item {} to cart for customer with ID {}", item, customerId);
         ObjectNode response = mapper.createObjectNode();
         Response result = cartService.addItemToCart(customerId, item, merchantId);
@@ -73,9 +69,9 @@ public class CartController extends Constants {
         }
     }
 
-    @PutMapping("/remove/{customerId}")
+    @PutMapping("/remove-item")
     @Operation(summary = "Remove item from cart")
-    public ResponseEntity<JsonNode> removeItemFromCart(@PathVariable String customerId, @RequestBody Item item) {
+    public ResponseEntity<JsonNode> removeItemFromCart(@RequestParam("user-id") String customerId, @RequestBody Item item) {
         log.info("Removing item {} from cart for customer with ID {}", item, customerId);
         ObjectNode response = mapper.createObjectNode();
         Response result = cartService.removeItemFromCart(customerId, item);
@@ -94,9 +90,9 @@ public class CartController extends Constants {
         }
     }
 
-    @DeleteMapping("/{customerId}")
+    @DeleteMapping("/")
     @Operation(summary = "Delete or empty cart for customer")
-    public ResponseEntity<JsonNode> deleteCart(@PathVariable String customerId) {
+    public ResponseEntity<JsonNode> deleteCart(@RequestParam("user-id") String customerId) {
         log.info("Deleting or emptying cart for customer with ID {}", customerId);
         ObjectNode response = mapper.createObjectNode();
         Response result = cartService.deleteCartByCustomerId(customerId);

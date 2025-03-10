@@ -29,6 +29,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 class OrderServiceTest extends Constants {
@@ -113,18 +114,19 @@ class OrderServiceTest extends Constants {
         successResp.setStatus(SUCCESS);
 
         String productIdsListUrl = productServiceUrl.concat("products/ids?productIds=").concat(globalUUID.toString());
-        String rewardPointsUrl = profileServiceUrl.concat("customers").concat(SLASH).concat("customer1").concat(SLASH).concat("rewards");
-        String updateProductUrl = productServiceUrl.concat("merchants").concat(SLASH).concat(globalUUID.toString()).concat(SLASH)
-                .concat("products").concat(SLASH).concat(globalUUID.toString());
-        String profileCustomerUpdate = profileServiceUrl.concat("customers").concat(SLASH).concat("customer1")
-                .concat(SLASH).concat("rewards").concat(SLASH).concat(BigDecimal.valueOf(0).toString());
+
+        //here we change the url to update product inventory.
+//        String updateProductUrl = productServiceUrl.concat("merchants").concat(SLASH).concat(globalUUID.toString()).concat(SLASH)
+//                .concat("products").concat(SLASH).concat(globalUUID.toString()).concat("?user-id=").concat(globalUUID.toString());
+        String updateProductUrl = productServiceUrl.concat("merchants").concat(SLASH)
+                .concat("products").concat(SLASH).concat(globalUUID.toString()).concat("?user-id=").concat(globalUUID.toString());
 
         when(cartService.getCartByCustomerId(anyString())).thenReturn(getCartDocument());
         when(mongoManager.insertDocument(any(), eq(orderDb), eq(orderColl))).thenReturn(true);
         when(wsUtils.makeWSCallObject(eq(productIdsListUrl), any(),any(), any(), anyLong(), anyLong())).thenReturn(prodDetailsResponse);
-        when(wsUtils.makeWSCallObject(eq(rewardPointsUrl), any(),any(), any(), anyLong(), anyLong())).thenReturn(rewardsResponse);
+        when(utils.getRewardPointsOffsetForCustomer(anyString())).thenReturn(rewards);
         when(wsUtils.makeWSCallObject(eq(updateProductUrl), any(), any(), any(), anyLong(), anyLong())).thenReturn(successResp);
-        when(wsUtils.makeWSCallString(eq(profileCustomerUpdate), any(), any(), any(), anyLong(), anyLong())).thenReturn(successResp);
+        doNothing().when(utils).updateCustomerRewardPoints(anyString(), anyString(), any());
         when(cartService.deleteCartByCustomerId(anyString())).thenReturn(null);
         when(utils.getSuccessResponse(anyString(), any())).thenReturn(getMockedSuccessResponse("Order created", objectMapper.createObjectNode()));
         Response response = orderService.createOrderFromCart("customer1", true, true);
