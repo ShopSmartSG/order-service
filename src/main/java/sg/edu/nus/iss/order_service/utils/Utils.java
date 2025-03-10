@@ -167,7 +167,7 @@ public class Utils extends Constants{
         reqModel.setDeliveryPersonId(deliveryPartnerId);
         reqModel.setStatus(status);
         reqModel.setMessage("Delivery status updated for orderId: ".concat(orderId).concat(" to status : ").concat(status.toString()));
-        String url = deliveryServiceUrl.concat("deliveries");
+        String url = deliveryServiceUrl.concat("deliveries/");
         HttpMethod method;
         JsonNode payload;
         if(isCreateNewDelivery){
